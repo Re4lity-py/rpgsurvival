@@ -3,201 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>L'Île de l'Oubli - RPG Survival</title>
+    <title>Survival Island V2</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #2c3e50; font-family: 'Courier New', monospace; color: white; touch-action: none; }
-        #gameCanvas { display: block; background: #27ae60; }
-        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
-        .bar { width: 150px; height: 15px; background: #333; margin-bottom: 5px; border: 1px solid #fff; }
-        .fill { height: 100%; transition: width 0.2s; }
-        #health .fill { background: #e74c3c; }
-        #energy .fill { background: #f1c40f; }
-        #controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; }
-        .btn { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 24px; user-select: none; }
-        .btn:active { background: rgba(255,255,255,0.5); }
-        #log { position: absolute; bottom: 10px; left: 10px; font-size: 12px; height: 100px; width: 200px; overflow: hidden; pointer-events: none; text-shadow: 1px 1px 0 #000; }
-        #questBox { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; text-align: right; pointer-events: none; }
-        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #34495e; padding: 20px; border: 2px solid white; text-align: center; display: none; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; touch-action: none; }
+        
+        /* Écran de rotation */
+        #rotate-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; text-align: center; }
+        
+        /* Canvas Jeu */
+        #gameCanvas { display: block; background: #4CAF50; }
+
+        /* UI Overlay */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* HUD Haut */
+        .hud-panel { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: white; padding: 8px 15px; border-radius: 20px; font-size: 14px; display: flex; gap: 15px; pointer-events: auto; border: 2px solid rgba(255,255,255,0.3); }
+        
+        /* Bouton Menu */
+        #menu-btn { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; background: #f39c12; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; pointer-events: auto; border: 2px solid white; cursor: pointer; }
+
+        /* Contrôles Bas */
+        .controls-zone { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; px: 20px; box-sizing: border-box; padding: 0 40px; pointer-events: auto; }
+
+        /* Joystick */
+        #joystick-zone { width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; position: relative; border: 2px solid rgba(255,255,255,0.3); }
+        #joystick-stick { width: 50px; height: 50px; background: rgba(255,255,255,0.8); border-radius: 50%; position: absolute; top: 35px; left: 35px; transition: transform 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        /* Bouton Action */
+        #action-btn { width: 90px; height: 90px; background: #e74c3c; border-radius: 50%; border: 4px solid white; display: flex; align-items: center; justify-content: center; font-size: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); active { transform: scale(0.95); } }
+        
+        /* Menu Crafting */
+        #craft-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #34495e; width: 80%; max-width: 500px; border-radius: 15px; padding: 20px; border: 4px solid #fff; display: none; color: white; z-index: 2000; pointer-events: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .craft-item { background: rgba(0,0,0,0.3); padding: 10px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .craft-btn { background: #27ae60; border: none; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }
+        .craft-btn:disabled { background: #7f8c8d; opacity: 0.5; }
+        .close-btn { background: #c0392b; width: 100%; padding: 10px; border: none; color: white; font-size: 16px; border-radius: 5px; margin-top: 10px; }
+
+        /* Messages flottants */
+        .floater { position: absolute; color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 0 #000; animation: floatUp 1s forwards; pointer-events: none; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div>SANTÉ: <div class="bar" id="health"><div class="fill" style="width: 100%;"></div></div></div>
-    <div>BOIS: <span id="woodVal">0</span> | PIERRE: <span id="stoneVal">0</span></div>
-</div>
+    <div id="rotate-screen">
+        <h1>📱 Tourne ton écran</h1>
+        <p>Ce jeu se joue en mode paysage !</p>
+    </div>
 
-<div id="questBox">
-    <strong>QUÊTE ACTUELLE</strong><br>
-    <span id="questName">1. Réveil</span><br>
-    <span id="questDesc">Ramasser 5 bois</span>
-</div>
+    <canvas id="gameCanvas"></canvas>
 
-<div id="log"></div>
+    <div id="ui-layer">
+        <div class="hud-panel">
+            <span>🪵 Bois: <b id="wood-count">0</b></span>
+            <span>🪨 Pierre: <b id="stone-count">0</b></span>
+            <span>❤️ Vie: <b id="hp-count">100%</b></span>
+        </div>
 
-<div id="menu">
-    <h2 id="menuTitle">Crafting</h2>
-    <p>Coût: 10 Bois + 5 Pierres</p>
-    <button onclick="upgradeTool()">Améliorer Hache</button>
-    <button onclick="closeMenu()">Fermer</button>
-</div>
+        <div id="menu-btn">🛠️</div>
 
-<div id="controls">
-    <div class="btn" id="actBtn">🔨</div>
-</div>
+        <div class="controls-zone">
+            <div id="joystick-zone">
+                <div id="joystick-stick"></div>
+            </div>
+            <div id="action-btn">👊</div>
+        </div>
+    </div>
 
-<canvas id="gameCanvas"></canvas>
+    <div id="craft-menu">
+        <h2 style="margin-top:0; text-align:center;">CRAFT & OUTILS</h2>
+        
+        <div class="craft-item">
+            <div>
+                <strong>🪓 Hache (Niv <span id="axe-lvl">0</span>)</strong><br>
+                <small>Permet de couper les arbres</small><br>
+                <small style="color:#f1c40f">Coût: <span id="axe-cost">10</span> Bois</small>
+            </div>
+            <button class="craft-btn" id="btn-axe" onclick="craft('axe')">AMÉLIORER</button>
+        </div>
+
+        <div class="craft-item">
+            <div>
+                <strong>⛏️ Pioche (Niv <span id="pick-lvl">0</span>)</strong><br>
+                <small>Permet de casser les rochers</small><br>
+                <small style="color:#f1c40f">Coût: <span id="pick-cost">10</span> Bois + 5 Pierre</small>
+            </div>
+            <button class="craft-btn" id="btn-pick" onclick="craft('pick')">AMÉLIORER</button>
+        </div>
+
+        <button class="close-btn" onclick="toggleMenu()">RETOUR AU JEU</button>
+    </div>
 
 <script>
-    // --- MOTEUR DE JEU SIMPLIFIÉ ---
+    // --- CONFIGURATION ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const rotateScreen = document.getElementById('rotate-screen');
     
-    // Ajuster la taille
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    // Joueur
+    const player = { x: 0, y: 0, speed: 3, size: 30, moving: false, angle: 0, hp: 100 };
+    const inventory = { wood: 0, stone: 0, axe: 0, pickaxe: 0 }; // axe 0 = mains nues
+    const costs = { axe: 10, pick: {wood: 10, stone: 5} };
+
+    // Monde
+    const objects = [];
+    const particles = [];
+    const mapSize = 2000; // Monde plus grand
+    
+    // Caméra
+    const camera = { x: 0, y: 0 };
+
+    // Joystick
+    const joyZone = document.getElementById('joystick-zone');
+    const joyStick = document.getElementById('joystick-stick');
+    let joyData = { active: false, dx: 0, dy: 0, maxDist: 35 };
+
+    // --- INITIALISATION ---
+    function init() {
+        resize();
+        player.x = mapSize/2;
+        player.y = mapSize/2;
+        generateWorld();
+        loop();
+    }
+
+    function generateWorld() {
+        // Générer 100 Arbres
+        for(let i=0; i<100; i++) {
+            objects.push({
+                type: 'tree',
+                x: Math.random() * mapSize,
+                y: Math.random() * mapSize,
+                hp: 3,
+                emoji: ['🌲', '🌳'][Math.floor(Math.random()*2)],
+                size: 40
+            });
+        }
+        // Générer 60 Rochers
+        for(let i=0; i<60; i++) {
+            objects.push({
+                type: 'rock',
+                x: Math.random() * mapSize,
+                y: Math.random() * mapSize,
+                hp: 4,
+                emoji: '🪨',
+                size: 35
+            });
+        }
+        // Générer 200 Décoration (Herbe)
+        for(let i=0; i<200; i++) {
+            objects.push({
+                type: 'grass',
+                x: Math.random() * mapSize,
+                y: Math.random() * mapSize,
+                emoji: ['🌿', '🌱', '🌼'][Math.floor(Math.random()*3)],
+                size: 15
+            });
+        }
+    }
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Gestion Paysage/Portrait
+        if(window.innerHeight > window.innerWidth) {
+            rotateScreen.style.display = 'flex';
+        } else {
+            rotateScreen.style.display = 'none';
+        }
+    }
     window.addEventListener('resize', resize);
-    resize();
 
-    // --- ETAT DU JEU ---
-    const player = { x: canvas.width/2, y: canvas.height/2, size: 20, speed: 4, color: '#ecf0f1', ax: 0, ay: 0 };
-    const resources = [];
-    const inventory = { wood: 0, stone: 0, toolLevel: 1 };
-    let quests = [
-        { id: 1, title: "Réveil", desc: "Ramasser 5 bois", target: 5, type: 'wood', done: false },
-        { id: 2, title: "Tailleur", desc: "Ramasser 5 pierres", target: 5, type: 'stone', done: false },
-        { id: 3, title: "Artisan", desc: "Améliorer votre hache", target: 2, type: 'tool', done: false },
-        { id: 4, title: "Survivant", desc: "Avoir 20 bois et 20 pierres", target: 20, type: 'hoard', done: false }
-    ];
-    let currentQuestIdx = 0;
+    // --- INPUTS (JOYSTICK & ACTION) ---
+    joyZone.addEventListener('touchstart', startJoy, {passive: false});
+    joyZone.addEventListener('touchmove', moveJoy, {passive: false});
+    joyZone.addEventListener('touchend', endJoy);
+    // Souris pour debug PC
+    joyZone.addEventListener('mousedown', (e) => { startJoy(e); window.addEventListener('mousemove', moveMouseJoy); window.addEventListener('mouseup', endJoy); });
+
+    function startJoy(e) {
+        joyData.active = true;
+        joyData.startX = e.touches ? e.touches[0].clientX : e.clientX;
+        joyData.startY = e.touches ? e.touches[0].clientY : e.clientY;
+    }
     
-    // Joystick virtuel basique
-    let touchX = null, touchY = null;
+    function moveMouseJoy(e) { moveJoy(e); }
 
-    // Génération monde
-    function spawnResource() {
-        const type = Math.random() > 0.5 ? 'wood' : 'stone';
-        resources.push({
-            x: Math.random() * (canvas.width - 20),
-            y: Math.random() * (canvas.height - 20),
-            type: type,
-            size: type === 'wood' ? 15 : 12,
-            color: type === 'wood' ? '#8e44ad' : '#7f8c8d' // Bois violet (bizarre mais visible), Pierre grise
-        });
-    }
-    for(let i=0; i<20; i++) spawnResource();
-
-    // --- LOGIQUE ---
-    function log(msg) {
-        const el = document.getElementById('log');
-        el.innerHTML = msg + "<br>" + el.innerHTML;
-    }
-
-    function updateQuest() {
-        if(currentQuestIdx >= quests.length) {
-            document.getElementById('questName').innerText = "VICTOIRE !";
-            document.getElementById('questDesc').innerText = "Vous avez survécu.";
-            return;
+    function moveJoy(e) {
+        if(!joyData.active) return;
+        e.preventDefault();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        let dx = cx - joyData.startX;
+        let dy = cy - joyData.startY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if(dist > joyData.maxDist) {
+            dx = (dx/dist) * joyData.maxDist;
+            dy = (dy/dist) * joyData.maxDist;
         }
         
-        const q = quests[currentQuestIdx];
-        document.getElementById('questName').innerText = (currentQuestIdx + 1) + ". " + q.title;
-        document.getElementById('questDesc').innerText = q.desc;
+        joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+        player.moving = true;
+        player.angle = Math.atan2(dy, dx);
+    }
 
-        let complete = false;
-        if(q.type === 'wood' && inventory.wood >= q.target) complete = true;
-        if(q.type === 'stone' && inventory.stone >= q.target) complete = true;
-        if(q.type === 'tool' && inventory.toolLevel >= q.target) complete = true;
-        if(q.type === 'hoard' && inventory.wood >= 20 && inventory.stone >= 20) complete = true;
+    function endJoy() {
+        joyData.active = false;
+        player.moving = false;
+        joyStick.style.transform = `translate(0px, 0px)`;
+        window.removeEventListener('mousemove', moveMouseJoy);
+    }
 
-        if(complete) {
-            log("★ QUÊTE TERMINÉE : " + q.title);
-            currentQuestIdx++;
-            // Bonus
-            inventory.wood += 5; 
+    // Bouton Action
+    document.getElementById('action-btn').addEventListener('touchstart', (e) => { e.preventDefault(); handleAction(); });
+    document.getElementById('action-btn').addEventListener('mousedown', handleAction);
+    document.getElementById('menu-btn').addEventListener('click', toggleMenu);
+
+    // --- LOGIQUE JEU ---
+    function handleAction() {
+        // Trouver l'objet le plus proche
+        let target = null;
+        let minIds = 60; // Distance d'interaction
+
+        objects.forEach((obj, i) => {
+            if(obj.type === 'grass') return;
+            const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
+            if(dist < minIds) {
+                target = obj;
+                target.index = i;
+            }
+        });
+
+        if(target) {
+            // Logique de récolte
+            if(target.type === 'tree') {
+                if(inventory.axe > 0) hitObject(target, 'wood', 1, "🪵");
+                else showFloat("Besoin d'une Hache !");
+            } else if(target.type === 'rock') {
+                if(inventory.pickaxe > 0) hitObject(target, 'stone', 1, "🪨");
+                else showFloat("Besoin d'une Pioche !");
+            }
+        } else {
+            // Attaque dans le vide
+            animatePlayerAction();
         }
     }
+
+    function hitObject(obj, resName, qty, icon) {
+        animatePlayerAction();
+        obj.hp--;
+        // Effet visuel (shake)
+        obj.x += (Math.random()-0.5)*5;
+        
+        if(obj.hp <= 0) {
+            inventory[resName] += qty + (resName === 'wood' ? inventory.axe-1 : inventory.pickaxe-1); // Bonus niveau
+            objects.splice(obj.index, 1);
+            showFloat(`+${qty} ${icon}`);
+            updateUI();
+        } else {
+            // Son "Pok" visuel
+            createParticle(obj.x, obj.y, '💥');
+        }
+    }
+
+    function createParticle(x, y, char) {
+        particles.push({x, y, life: 20, char});
+    }
+
+    function showFloat(text) {
+        const el = document.createElement('div');
+        el.className = 'floater';
+        el.innerText = text;
+        el.style.left = (window.innerWidth/2) + 'px';
+        el.style.top = (window.innerHeight/2 - 50) + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    function toggleMenu() {
+        const m = document.getElementById('craft-menu');
+        m.style.display = m.style.display === 'block' ? 'none' : 'block';
+        updateUI();
+    }
+
+    window.craft = function(type) {
+        if(type === 'axe') {
+            if(inventory.wood >= costs.axe) {
+                inventory.wood -= costs.axe;
+                inventory.axe++;
+                costs.axe = Math.floor(costs.axe * 1.5);
+                showFloat("Hache améliorée !");
+            }
+        } else if(type === 'pick') {
+            if(inventory.wood >= costs.pick.wood && inventory.stone >= costs.pick.stone) {
+                inventory.wood -= costs.pick.wood;
+                inventory.stone -= costs.pick.stone;
+                inventory.pickaxe++;
+                costs.pick.wood = Math.floor(costs.pick.wood * 1.2);
+                costs.pick.stone = Math.floor(costs.pick.stone * 1.2);
+                showFloat("Pioche améliorée !");
+            }
+        }
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('wood-count').innerText = inventory.wood;
+        document.getElementById('stone-count').innerText = inventory.stone;
+        document.getElementById('axe-lvl').innerText = inventory.axe;
+        document.getElementById('pick-lvl').innerText = inventory.pickaxe;
+        
+        // Bouton Action Icone
+        const btn = document.getElementById('action-btn');
+        if(inventory.axe === 0 && inventory.pickaxe === 0) btn.innerText = "👊";
+        else if(inventory.pickaxe > inventory.axe) btn.innerText = "⛏️";
+        else btn.innerText = "🪓";
+        
+        // Update menu costs
+        document.getElementById('axe-cost').innerText = costs.axe;
+        document.getElementById('pick-cost').innerText = costs.pick.wood + " B / " + costs.pick.stone + " P";
+        
+        // Enable/Disable buttons
+        document.getElementById('btn-axe').disabled = inventory.wood < costs.axe;
+        document.getElementById('btn-pick').disabled = (inventory.wood < costs.pick.wood || inventory.stone < costs.pick.stone);
+    }
+
+    // --- BOUCLE PRINCIPALE ---
+    let actionAnim = 0;
+    function animatePlayerAction() { actionAnim = 10; }
 
     function loop() {
-        ctx.fillStyle = '#27ae60';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Mouvement joueur (vers le touch ou la souris)
-        if (touchX !== null) {
-            const dx = touchX - player.x;
-            const dy = touchY - player.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist > 5) {
-                player.x += (dx/dist) * player.speed;
-                player.y += (dy/dist) * player.speed;
-            }
+        // Update physique
+        if(player.moving) {
+            player.x += Math.cos(player.angle) * player.speed;
+            player.y += Math.sin(player.angle) * player.speed;
+            
+            // Limites carte
+            if(player.x < 0) player.x = 0;
+            if(player.y < 0) player.y = 0;
+            if(player.x > mapSize) player.x = mapSize;
+            if(player.y > mapSize) player.y = mapSize;
         }
 
-        // Dessiner Ressources
-        resources.forEach((res, index) => {
-            ctx.fillStyle = res.color;
-            ctx.beginPath();
-            if(res.type === 'wood') ctx.fillRect(res.x, res.y, res.size, res.size * 1.5); // Arbre rectangle
-            else ctx.arc(res.x, res.y, res.size, 0, Math.PI*2); // Pierre ronde
-            ctx.fill();
+        // Caméra suit joueur
+        camera.x = player.x - canvas.width/2;
+        camera.y = player.y - canvas.height/2;
 
-            // Collision / Ramassage
-            const dist = Math.hypot(player.x - res.x, player.y - res.y);
-            if(dist < player.size + res.size) {
-                if(res.type === 'wood') { inventory.wood++; log("+1 Bois"); }
-                else { inventory.stone++; log("+1 Pierre"); }
-                resources.splice(index, 1);
-                spawnResource(); // Respawn immédiat
-                updateQuest();
+        // Rendu
+        ctx.fillStyle = '#2e8b57'; // Herbe foncée
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(-camera.x, -camera.y);
+
+        // Grille sol (pour effet de vitesse)
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.beginPath();
+        for(let x=0; x<mapSize; x+=100) { ctx.moveTo(x,0); ctx.lineTo(x,mapSize); }
+        for(let y=0; y<mapSize; y+=100) { ctx.moveTo(0,y); ctx.lineTo(mapSize,y); }
+        ctx.stroke();
+
+        // Objets (Triés par Y pour effet de profondeur)
+        objects.sort((a,b) => a.y - b.y);
+        objects.forEach(obj => {
+            // Optimisation: ne dessiner que si visible
+            if(obj.x > camera.x - 50 && obj.x < camera.x + canvas.width + 50 &&
+               obj.y > camera.y - 50 && obj.y < camera.y + canvas.height + 50) {
+                   ctx.font = obj.size + "px Serif";
+                   ctx.textAlign = "center";
+                   ctx.textBaseline = "middle";
+                   ctx.fillText(obj.emoji, obj.x, obj.y);
             }
         });
 
-        // Dessiner Joueur
-        ctx.fillStyle = player.color;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // UI Update
-        document.getElementById('woodVal').innerText = inventory.wood;
-        document.getElementById('stoneVal').innerText = inventory.stone;
+        // Joueur
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        // Si action, petite secousse
+        if(actionAnim > 0) {
+            ctx.rotate(Math.sin(actionAnim)*0.2);
+            actionAnim--;
+        }
+        ctx.font = "40px Serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🤠", 0, 0);
+        ctx.restore();
 
+        // Particules
+        for(let i=particles.length-1; i>=0; i--) {
+            let p = particles[i];
+            ctx.font = "20px Arial";
+            ctx.fillText(p.char, p.x, p.y);
+            p.y -= 1;
+            p.life--;
+            if(p.life <= 0) particles.splice(i, 1);
+        }
+
+        ctx.restore();
         requestAnimationFrame(loop);
     }
 
-    // --- CONTRÔLES TACTILES ---
-    canvas.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; });
-    canvas.addEventListener('touchmove', e => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; e.preventDefault(); });
-    canvas.addEventListener('touchend', () => { touchX = null; touchY = null; });
-    
-    // Souris (pour tester sur PC)
-    let mouseDown = false;
-    canvas.addEventListener('mousedown', e => { mouseDown = true; touchX = e.clientX; touchY = e.clientY; });
-    canvas.addEventListener('mousemove', e => { if(mouseDown) { touchX = e.clientX; touchY = e.clientY; }});
-    canvas.addEventListener('mouseup', () => { mouseDown = false; touchX = null; touchY = null; });
+    init();
 
-    // Actions
-    document.getElementById('actBtn').addEventListener('click', () => {
-        document.getElementById('menu').style.display = 'block';
-    });
-
-    window.closeMenu = function() { document.getElementById('menu').style.display = 'none'; }
-    window.upgradeTool = function() {
-        if(inventory.wood >= 10 && inventory.stone >= 5) {
-            inventory.wood -= 10;
-            inventory.stone -= 5;
-            inventory.toolLevel++;
-            player.speed += 2; // Amélioration de la vitesse
-            player.color = '#3498db'; // Changement de couleur
-            log("Outil amélioré ! Vitesse augmentée.");
-            closeMenu();
-            updateQuest();
-        } else {
-            log("Pas assez de ressources !");
-        }
-    }
-
-    loop();
 </script>
 </body>
 </html>
