@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>L'Île de l'Oubli - RPG Survival</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #2c3e50; font-family: 'Courier New', monospace; color: white; touch-action: none; }
+        #gameCanvas { display: block; background: #27ae60; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        .bar { width: 150px; height: 15px; background: #333; margin-bottom: 5px; border: 1px solid #fff; }
+        .fill { height: 100%; transition: width 0.2s; }
+        #health .fill { background: #e74c3c; }
+        #energy .fill { background: #f1c40f; }
+        #controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; }
+        .btn { width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 24px; user-select: none; }
+        .btn:active { background: rgba(255,255,255,0.5); }
+        #log { position: absolute; bottom: 10px; left: 10px; font-size: 12px; height: 100px; width: 200px; overflow: hidden; pointer-events: none; text-shadow: 1px 1px 0 #000; }
+        #questBox { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; text-align: right; pointer-events: none; }
+        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #34495e; padding: 20px; border: 2px solid white; text-align: center; display: none; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div>SANTÉ: <div class="bar" id="health"><div class="fill" style="width: 100%;"></div></div></div>
+    <div>BOIS: <span id="woodVal">0</span> | PIERRE: <span id="stoneVal">0</span></div>
+</div>
+
+<div id="questBox">
+    <strong>QUÊTE ACTUELLE</strong><br>
+    <span id="questName">1. Réveil</span><br>
+    <span id="questDesc">Ramasser 5 bois</span>
+</div>
+
+<div id="log"></div>
+
+<div id="menu">
+    <h2 id="menuTitle">Crafting</h2>
+    <p>Coût: 10 Bois + 5 Pierres</p>
+    <button onclick="upgradeTool()">Améliorer Hache</button>
+    <button onclick="closeMenu()">Fermer</button>
+</div>
+
+<div id="controls">
+    <div class="btn" id="actBtn">🔨</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    // --- MOTEUR DE JEU SIMPLIFIÉ ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Ajuster la taille
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- ETAT DU JEU ---
+    const player = { x: canvas.width/2, y: canvas.height/2, size: 20, speed: 4, color: '#ecf0f1', ax: 0, ay: 0 };
+    const resources = [];
+    const inventory = { wood: 0, stone: 0, toolLevel: 1 };
+    let quests = [
+        { id: 1, title: "Réveil", desc: "Ramasser 5 bois", target: 5, type: 'wood', done: false },
+        { id: 2, title: "Tailleur", desc: "Ramasser 5 pierres", target: 5, type: 'stone', done: false },
+        { id: 3, title: "Artisan", desc: "Améliorer votre hache", target: 2, type: 'tool', done: false },
+        { id: 4, title: "Survivant", desc: "Avoir 20 bois et 20 pierres", target: 20, type: 'hoard', done: false }
+    ];
+    let currentQuestIdx = 0;
+    
+    // Joystick virtuel basique
+    let touchX = null, touchY = null;
+
+    // Génération monde
+    function spawnResource() {
+        const type = Math.random() > 0.5 ? 'wood' : 'stone';
+        resources.push({
+            x: Math.random() * (canvas.width - 20),
+            y: Math.random() * (canvas.height - 20),
+            type: type,
+            size: type === 'wood' ? 15 : 12,
+            color: type === 'wood' ? '#8e44ad' : '#7f8c8d' // Bois violet (bizarre mais visible), Pierre grise
+        });
+    }
+    for(let i=0; i<20; i++) spawnResource();
+
+    // --- LOGIQUE ---
+    function log(msg) {
+        const el = document.getElementById('log');
+        el.innerHTML = msg + "<br>" + el.innerHTML;
+    }
+
+    function updateQuest() {
+        if(currentQuestIdx >= quests.length) {
+            document.getElementById('questName').innerText = "VICTOIRE !";
+            document.getElementById('questDesc').innerText = "Vous avez survécu.";
+            return;
+        }
+        
+        const q = quests[currentQuestIdx];
+        document.getElementById('questName').innerText = (currentQuestIdx + 1) + ". " + q.title;
+        document.getElementById('questDesc').innerText = q.desc;
+
+        let complete = false;
+        if(q.type === 'wood' && inventory.wood >= q.target) complete = true;
+        if(q.type === 'stone' && inventory.stone >= q.target) complete = true;
+        if(q.type === 'tool' && inventory.toolLevel >= q.target) complete = true;
+        if(q.type === 'hoard' && inventory.wood >= 20 && inventory.stone >= 20) complete = true;
+
+        if(complete) {
+            log("★ QUÊTE TERMINÉE : " + q.title);
+            currentQuestIdx++;
+            // Bonus
+            inventory.wood += 5; 
+        }
+    }
+
+    function loop() {
+        ctx.fillStyle = '#27ae60';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Mouvement joueur (vers le touch ou la souris)
+        if (touchX !== null) {
+            const dx = touchX - player.x;
+            const dy = touchY - player.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if(dist > 5) {
+                player.x += (dx/dist) * player.speed;
+                player.y += (dy/dist) * player.speed;
+            }
+        }
+
+        // Dessiner Ressources
+        resources.forEach((res, index) => {
+            ctx.fillStyle = res.color;
+            ctx.beginPath();
+            if(res.type === 'wood') ctx.fillRect(res.x, res.y, res.size, res.size * 1.5); // Arbre rectangle
+            else ctx.arc(res.x, res.y, res.size, 0, Math.PI*2); // Pierre ronde
+            ctx.fill();
+
+            // Collision / Ramassage
+            const dist = Math.hypot(player.x - res.x, player.y - res.y);
+            if(dist < player.size + res.size) {
+                if(res.type === 'wood') { inventory.wood++; log("+1 Bois"); }
+                else { inventory.stone++; log("+1 Pierre"); }
+                resources.splice(index, 1);
+                spawnResource(); // Respawn immédiat
+                updateQuest();
+            }
+        });
+
+        // Dessiner Joueur
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // UI Update
+        document.getElementById('woodVal').innerText = inventory.wood;
+        document.getElementById('stoneVal').innerText = inventory.stone;
+
+        requestAnimationFrame(loop);
+    }
+
+    // --- CONTRÔLES TACTILES ---
+    canvas.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; });
+    canvas.addEventListener('touchmove', e => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; e.preventDefault(); });
+    canvas.addEventListener('touchend', () => { touchX = null; touchY = null; });
+    
+    // Souris (pour tester sur PC)
+    let mouseDown = false;
+    canvas.addEventListener('mousedown', e => { mouseDown = true; touchX = e.clientX; touchY = e.clientY; });
+    canvas.addEventListener('mousemove', e => { if(mouseDown) { touchX = e.clientX; touchY = e.clientY; }});
+    canvas.addEventListener('mouseup', () => { mouseDown = false; touchX = null; touchY = null; });
+
+    // Actions
+    document.getElementById('actBtn').addEventListener('click', () => {
+        document.getElementById('menu').style.display = 'block';
+    });
+
+    window.closeMenu = function() { document.getElementById('menu').style.display = 'none'; }
+    window.upgradeTool = function() {
+        if(inventory.wood >= 10 && inventory.stone >= 5) {
+            inventory.wood -= 10;
+            inventory.stone -= 5;
+            inventory.toolLevel++;
+            player.speed += 2; // Amélioration de la vitesse
+            player.color = '#3498db'; // Changement de couleur
+            log("Outil amélioré ! Vitesse augmentée.");
+            closeMenu();
+            updateQuest();
+        } else {
+            log("Pas assez de ressources !");
+        }
+    }
+
+    loop();
+</script>
+</body>
+</html>
