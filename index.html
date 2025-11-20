@@ -18,32 +18,43 @@
     .ui-layer { position: absolute; top: 0; left: 0;
     width: 100%; height: 100%; pointer-events: none; }
     
-    .hud { position: absolute; top: 10px;
-    left: 10px; background: rgba(20,20,20,0.9); color: #fff; padding: 8px; border-radius: 8px; border: 2px solid #555; font-size: 13px; font-weight: bold; display: flex;
-    flex-direction: column; gap: 5px; pointer-events: auto; max-width: 200px; }
+    .hud-left { 
+        position: absolute; top: 10px; left: 10px;
+        display: flex; flex-direction: column; gap: 10px; /* Espace entre HUD et Quête */
+        pointer-events: auto; max-width: 250px; 
+    }
+    .hud-box { background: rgba(20,20,20,0.9); color: #fff; padding: 8px; border-radius: 8px; border: 2px solid #555; font-size: 13px; font-weight: bold; display: flex;
+    flex-direction: column; gap: 5px; }
     .hud-row { display: flex; justify-content: space-between; gap: 10px;
     }
 
-    /* NOUVEAU CONTENEUR pour Quête + Carte */
-    .top-right-ui { position: absolute;
-    top: 10px; right: 10px; display: flex; align-items: flex-start; gap: 10px;
+    /* NOUVEAU: Boîte de Quête sous le HUD */
+    .quest-box { 
+        background: rgba(0,0,0,0.6); color: #f1c40f; padding: 10px; border-radius: 5px;
+        border-left: 4px solid #f1c40f; font-size: 15px; /* Texte de quête plus grand */
+        text-align: left; 
+        pointer-events: none; 
+        width: 100%; /* S'aligne sur la largeur du HUD-LEFT */
     }
-    
-    .quest-box { background: rgba(0,0,0,0.6); color: #f1c40f; padding: 10px; border-radius: 5px;
-    border-left: 4px solid #f1c40f; font-size: 14px; max-width: 250px; text-align: right; pointer-events: none; }
     .quest-title { font-weight: 900;
     text-transform: uppercase; font-size: 11px; letter-spacing: 1px; color: #aaa; }
     
-    /* MINI-MAP DEVIENT UN BOUTON */
-    #map-btn { width: 50px;
-    height: 50px; border-radius: 10px; background: #3498db; border: 2px solid #fff; display: flex; justify-content: center; align-items: center; font-size: 24px; pointer-events: auto;
-    cursor: pointer; box-shadow: 0 4px 0 #2980b9; transition: background 0.2s; }
+    /* Ancienne div .top-right-ui supprimée, Menu et Map restent à droite */
+    #map-btn { 
+        position: absolute; top: 10px; right: 70px; /* Décalé à côté du menu */
+        width: 50px;
+        height: 50px; border-radius: 10px; background: #3498db; border: 2px solid #fff; display: flex; justify-content: center; align-items: center; font-size: 24px; pointer-events: auto;
+        cursor: pointer; box-shadow: 0 4px 0 #2980b9; transition: background 0.2s; 
+    }
     #map-btn:active { transform: translateY(4px); box-shadow: none;
     }
     
-    #menu-btn { width: 50px; height: 50px; background: #e67e22; border-radius: 10px;
-    border: 2px solid #fff; font-size: 24px; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer;
-    box-shadow: 0 4px 0 #d35400; }
+    #menu-btn { 
+        position: absolute; top: 10px; right: 10px; /* Reste à droite */
+        width: 50px; height: 50px; background: #e67e22; border-radius: 10px;
+        border: 2px solid #fff; font-size: 24px; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer;
+        box-shadow: 0 4px 0 #d35400; 
+    }
     #menu-btn:active { transform: translateY(4px); box-shadow: none;
     }
     
@@ -98,28 +109,28 @@
 <div class="ui-layer">
     <div id="save-notif" style="position:absolute;top:70px;left:50%;transform:translateX(-50%);background:#27ae60;color:white;padding:5px 15px;border-radius:5px;display:none;z-index:5001;">💾 Sauvegarde auto...</div>
 
-    <div class="hud">
-        <div class="hud-row" style="color:#e74c3c; border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:5px;">
-            <span>❤️ VIE</span> <span id="hud-hp">100/100</span>
+    <div class="hud-left">
+        <div class="hud-box">
+            <div class="hud-row" style="color:#e74c3c; border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:5px;">
+                <span>❤️ VIE</span> <span id="hud-hp">100/100</span>
+            </div>
+            <div class="hud-row"><span>🪵 Bois</span> <span id="hud-wood">0</span></div>
+            <div class="hud-row"><span>🪨 Pierre</span> <span id="hud-stone">0</span></div>
+            <div class="hud-row"><span>🟡 Or</span> <span 
+        id="hud-gold">0</span></div>
+            <div class="hud-row"><span>⚪ Fer</span> <span id="hud-iron">0</span></div>
+            <div class="hud-row"><span>⚫ Obsi</span> <span id="hud-obsi">0</span></div>
         </div>
-        <div class="hud-row"><span>🪵 Bois</span> <span id="hud-wood">0</span></div>
-        <div class="hud-row"><span>🪨 Pierre</span> <span id="hud-stone">0</span></div>
-        <div class="hud-row"><span>🟡 Or</span> <span 
-    id="hud-gold">0</span></div>
-        <div class="hud-row"><span>⚪ Fer</span> <span id="hud-iron">0</span></div>
-        <div class="hud-row"><span>⚫ Obsi</span> <span id="hud-obsi">0</span></div>
-    </div>
-    
-    <div class="top-right-ui">
-        <div id="map-btn" onclick="showFullMapModal()">🔍</div>
-        <div id="menu-btn">⚙️</div>
-    </div>
 
-    <div class="quest-box">
-        <div class="quest-title">OBJECTIF ACTUEL</div>
-        <div id="quest-txt">Chargement...</div>
+        <div class="quest-box">
+            <div class="quest-title">OBJECTIF ACTUEL</div>
+            <div id="quest-txt">Chargement...</div>
+        </div>
     </div>
     
+    <div id="map-btn" onclick="showFullMapModal()">🔍</div>
+    <div id="menu-btn">⚙️</div>
+
     <div id="joystick-zone"><div id="joystick-stick" style="position: 
     absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.8); border-radius: 50%; top: 35px;
     left: 35px;"></div></div>
@@ -272,8 +283,7 @@ const ctx = canvas.getContext('2d', { alpha: false });
 const mapCanvas = document.getElementById('fullMapCanvas');
 const ctxMap = mapCanvas.getContext('2d');
 
-// --- NOUVEAU: EFFACEMENT FORCÉ DE LA SAUVEGARDE (Pour réparer le chargement) ---
-// Retirer ou commenter cette ligne après avoir réussi à lancer le jeu une fois
+// --- EFFACEMENT FORCÉ DE LA SAUVEGARDE (À RETIRER APRÈS LE PREMIER LANCEMENT) ---
 localStorage.removeItem('rpg_save_v7');
 // --- FIN EFFACEMENT FORCÉ ---
 
@@ -460,7 +470,8 @@ function update(dt) {
             } 
         } 
     } 
-    game.dayTime += 0.0005; 
+    // CORRECTION : Cycle jour/nuit 5x plus lent
+    game.dayTime += 0.0001; 
     if(game.dayTime > 1) game.dayTime = 0;
     
     // Float Text Update
@@ -510,8 +521,8 @@ function draw() {
         ctx.fillText(p.text, p.x - game.camera.x, p.y - game.camera.y);
     }
     
-    // Night overlay
-    document.getElementById('night-overlay').style.opacity = Math.abs(game.dayTime - 0.5) * 2;
+    // CORRECTION : La nuit est moins sombre (max 0.5 au lieu de 1.0)
+    document.getElementById('night-overlay').style.opacity = Math.abs(game.dayTime - 0.5);
 }
 
 // --- RENDU CARTE COMPLÈTE (NOUVEAU) --- 
@@ -736,6 +747,8 @@ function updateUI() {
     document.getElementById('btn-house').disabled = game.house.lvl >= 2 || (game.house.lvl == 0 && (game.inv.wood < 20 || game.inv.stone < 10)) || (game.house.lvl == 1 && (game.inv.wood < 50 || game.inv.stone < 50));
     document.getElementById('btn-armor').disabled = game.inv.armor >= 3 || !game.house.active;
     document.getElementById('btn-axe').disabled = game.inv.wood < (game.inv.axe * 20);
+    document.getElementById('btn-pick').disabled = game.inv.wood < 20 || game.inv.stone < 20;
+    document.getElementById('btn-sword').disabled = game.inv.wood < 50 || game.inv.gold < (game.inv.sword * 5);
 }
 
 function createFloatText(text, x, y, color) {
