@@ -2,13 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Survival RPG PC - ZQSD Edition</title>
+<title>Survival RPG ULTIMATE - 10k Map</title>
 <style>
     /* --- CSS GLOBAL --- */
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; font-family: 'Segoe UI', sans-serif; }
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
     
-    /* Curseur en croix pour le style PC */
     #gameCanvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; }
 
     /* --- UI --- */
@@ -22,12 +21,21 @@
     .quest-box { background: rgba(0,0,0,0.6); color: #f1c40f; padding: 10px; border-radius: 5px; border-left: 4px solid #f1c40f; font-size: 14px; max-width: 250px; text-align: right; pointer-events: none; margin-top: 10px; }
     .quest-title { font-weight: 900; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; color: #aaa; }
     
-    /* Instructions PC discrètes en bas */
     .pc-controls-hint {
         position: absolute; bottom: 10px; right: 10px;
         color: rgba(255,255,255,0.5); font-size: 12px; text-align: right;
         pointer-events: none;
     }
+
+    /* MINIMAP */
+    #minimap-container {
+        position: absolute; top: 10px; right: 10px;
+        border: 3px solid #fff; border-radius: 4px;
+        background: #000; display: none; /* Caché par défaut */
+        pointer-events: auto;
+        z-index: 100;
+    }
+    #minimapCanvas { display: block; background: #000; }
 
     /* MENUS & MODALS */
     .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c3e50; width: 80%; max-width: 600px; border: 4px solid #fff; border-radius: 15px; display: none; z-index: 5000; padding: 20px; color: #fff; pointer-events: auto; box-shadow: 0 0 50px #000; overflow-y: auto; text-align: center; }
@@ -38,11 +46,12 @@
     .btn:active { border-bottom: 0; transform: translateY(3px); }
     .btn:hover { background: #2ecc71; } 
     .btn:disabled { background: #7f8c8d; border-bottom: 3px solid #555; opacity: 0.5; }
-    .close-modal { width: 100%; background: #c0392b; border-bottom: 4px solid #922b21; padding: 15px; font-size: 18px; margin-top: 20px; }
     
-    /* DEATH MENU SPECIFIC */
+    /* ECRAN MORT */
     #death-screen { background: rgba(192, 57, 43, 0.95); border-color: #e74c3c; width: 90%; max-width: 400px; }
-    .death-options button { margin: 10px; padding: 15px 25px; font-size: 16px; width: 80%; }
+    .death-options { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .death-options button { width: 100%; font-size: 16px; padding: 12px; }
+    #btn-respawn { background: #3498db; border-bottom-color: #2980b9; display: none; }
 
 </style>
 </head>
@@ -61,8 +70,14 @@
         <div class="hud-row"><span>🟡 Or</span> <span id="hud-gold">0</span></div>
         <div class="hud-row"><span>⚪ Fer</span> <span id="hud-iron">0</span></div>
         <div class="hud-row"><span>⚫ Obsi</span> <span id="hud-obsi">0</span></div>
+        <div class="hud-row" style="margin-top:5px; color:#aaa; font-size:10px;">Biomes: Forêt, Désert, Neige, Volcan</div>
     </div>
     
+    <div id="minimap-container">
+        <canvas id="minimapCanvas" width="200" height="200"></canvas>
+        <div style="color:white; font-size:10px; text-align:center; background:#222; padding:2px;">CARTE (VerrMaj)</div>
+    </div>
+
     <div class="top-right-ui">
         <div class="quest-box">
             <div class="quest-title">OBJECTIF ACTUEL</div>
@@ -71,14 +86,14 @@
     </div>
     
     <div class="pc-controls-hint">
-        <b>[ZQSD]</b> Bouger &nbsp; <b>[CLIC GAUCHE]</b> Action &nbsp; <b>[TAB]</b> Menu
+        <b>[ZQSD]</b> Bouger &nbsp; <b>[CLIC GAUCHE]</b> Action &nbsp; <b>[TAB]</b> Menu &nbsp; <b>[VERR MAJ]</b> Carte
     </div>
 </div>
 
 <div id="craft-menu" class="modal">
     <h2>🛠️ FORGE & ARTISANAT</h2>
     <div class="craft-row" style="border-color:#f39c12; background:rgba(243,156,18,0.1);">
-        <div><strong>🏠 BASE / SOIN (Niv <span id="house-lvl">0</span>)</strong><br><small id="house-desc">Soin passif à domicile</small><br><span class="cost" id="house-cost">...</span></div>
+        <div><strong>🏠 BASE / SOIN (Niv <span id="house-lvl">0</span>)</strong><br><small id="house-desc">Permet de Respawn + Soin</small><br><span class="cost" id="house-cost">...</span></div>
         <button class="btn" id="btn-house" onclick="game.craft('house')">BÂTIR</button>
     </div>
     <div class="craft-row" style="border-color:#3498db; background:rgba(52,152,219,0.1);">
@@ -95,21 +110,22 @@
 
 <div id="death-screen" class="modal">
     <h2>💀 MORT !</h2>
-    <p>Ton aventure s'arrête ici.</p>
+    <p>Ton aventure s'arrête ici... ou pas ?</p>
     <div class="death-options">
-        <button class="btn" id="btn-restart" onclick="location.reload()">🎮 Recommencer</button>
+        <button class="btn" id="btn-respawn" onclick="respawnBase()">🏠 RESPAWN BASE</button>
+        <button class="btn" id="btn-restart" style="background:#c0392b;" onclick="location.reload()">☠️ TOUT RECOMMENCER</button>
     </div>
 </div>
 
 <script>
 /**
- * SURVIVAL RPG ULTIMATE - PC EDITION (ZQSD)
+ * SURVIVAL RPG ULTIMATE - 10k MAP + BIOMES RANDOM + MINIMAP
  */
 
-const WORLD_W = 4000;
-const WORLD_H = 4000;
+const WORLD_W = 10000;
+const WORLD_H = 10000;
+const CHUNK_SIZE = 1000; // Taille d'un biome (carré)
 const SCALE_BASE = 4;
-const SAFE_ZONE_X = 500; 
 
 const PALETTE = [
     'rgba(0,0,0,0)', '#000000', '#FFFFFF', '#8b4513', '#2ecc71', 
@@ -117,98 +133,60 @@ const PALETTE = [
     '#bdc3c7', '#1c2833', '#1e8449'
 ];
 
-const PIXEL_ASSETS = {
-    PLAYER_IDLE: [
-        [0,0,1,1,1,1,0,0], [0,1,6,2,2,6,1,0], [0,1,6,2,2,6,1,0], [0,0,1,3,3,1,0,0],
-        [0,0,1,3,3,1,0,0], [0,0,1,2,2,1,0,0], [0,0,1,3,3,1,0,0], [0,1,3,0,0,3,1,0]
-    ],
-    PLAYER_SWORD: [
-        [1,0,0,0,0,0,0,0], [1,1,0,0,0,0,0,0], [0,1,1,0,0,0,0,0], [0,0,1,1,1,1,1,0],
-        [0,0,1,3,3,1,0,0], [0,0,1,2,2,1,0,0], [0,0,1,3,3,1,0,0], [0,1,3,0,0,3,1,0]
-    ],
-    TREE: [
-        [0,0,4,4,4,4,0,0], [0,4,4,4,4,4,4,0], [4,4,4,4,4,4,4,4], [0,0,0,3,3,0,0,0],
-        [0,0,0,3,3,0,0,0], [0,0,0,3,3,0,0,0], [0,0,0,3,3,0,0,0], [0,0,0,3,3,0,0,0]
-    ],
-    STONE: [
-        [0,0,5,5,5,5,0,0], [0,5,5,5,5,5,5,0], [5,5,5,1,5,5,5,5], [5,5,1,5,5,5,5,5],
-        [0,5,5,5,5,5,5,0], [0,0,5,5,5,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0]
-    ],
-    SLIME: [
-        [0,0,4,4,4,4,0,0], [0,4,4,4,4,4,4,0], [4,4,4,4,4,4,4,4], [4,4,1,4,4,1,4,4],
-        [4,4,4,4,4,4,4,4], [0,4,4,1,1,4,4,0], [0,0,4,4,4,4,0,0], [0,0,0,0,0,0,0,0]
-    ],
-    HOUSE_LVL1: [
-        [0,0,0,1,1,0,0,0], [0,0,1,6,6,1,0,0], [0,1,3,3,3,3,1,0], [1,3,3,3,3,3,3,1],
-        [1,3,2,1,1,2,3,1], [1,3,2,1,1,2,3,1], [1,3,3,3,3,3,3,1], [1,1,1,1,1,1,1,1]
-    ],
-    HOUSE_LVL2: [
-        [0,0,1,2,2,1,0,0], [0,1,3,3,3,3,1,0], [1,3,7,7,7,7,3,1], [1,3,7,2,2,7,3,1],
-        [1,3,7,2,2,7,3,1], [1,3,7,7,7,7,3,1], [1,3,3,3,3,3,3,1], [1,1,1,1,1,1,1,1]
-    ],
-    ROCK_GOLD: [
-        [0,7,7,7,7,0,0,0], [7,7,5,5,5,7,7,0], [7,5,5,7,5,5,7,7], [5,7,5,5,5,5,7,0],
-        [5,5,7,7,5,5,0,0], [0,5,5,5,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0]
-    ],
-    SCORPION: [
-        [1,0,0,0,0,0,0,1], [0,1,0,0,0,0,1,0], [0,0,1,1,1,1,0,0], [0,0,1,6,6,1,0,0],
-        [0,0,1,1,1,1,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0]
-    ],
-    IRON_ROCK: [
-        [0,0,10,10,10,10,0,0], [0,10,5,5,5,10,10,0], [10,5,5,10,5,5,10,10], [5,10,5,5,5,5,10,0],
-        [5,5,10,10,5,5,0,0], [0,5,5,5,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0]
-    ],
-    WOLF: [
-        [0,1,1,0,0,1,1,0], [1,2,2,1,1,2,2,1], [1,2,2,2,2,2,2,1], [0,1,2,2,2,2,1,0],
-        [0,0,1,2,2,1,0,0], [0,0,1,1,1,1,0,0], [0,0,1,0,0,1,0,0], [0,0,1,0,0,1,0,0]
-    ],
-    RUBY: [
-        [0,0,0,9,9,0,0,0], [0,0,9,9,9,9,0,0], [0,9,9,1,1,9,9,0], [9,9,1,9,9,1,9,9],
-        [9,1,9,9,9,9,1,9], [9,9,9,1,1,9,9,9], [0,9,9,9,9,9,9,0], [0,0,0,0,0,0,0,0]
-    ],
-    DEMON: [
-        [0,6,0,1,1,0,6,0], [1,6,1,6,6,1,6,1], [1,1,1,6,6,1,1,1], [0,1,1,6,6,1,1,0],
-        [0,0,1,6,6,1,0,0], [0,0,1,3,3,1,0,0], [0,0,1,3,3,1,0,0], [0,0,1,0,0,1,0,0]
-    ],
-    BOSS: [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0], [0,0,0,0,1,6,6,6,6,1,0,0,0,0,0,0],
-        [0,0,0,1,6,6,1,6,6,6,1,0,0,0,0,0], [0,0,1,6,6,6,6,6,6,6,6,1,0,0,0,0], [0,1,6,6,6,6,6,6,6,6,6,6,1,0,0,0],
-        [1,6,6,6,1,1,6,6,1,1,6,6,6,1,0,0], [1,6,6,6,6,6,6,6,6,6,6,6,6,1,0,0], [1,6,6,6,6,6,6,6,6,6,6,6,6,1,0,0],
-        [0,1,6,6,6,1,1,1,1,1,6,6,6,1,0,0], [0,0,1,6,6,1,0,0,0,1,6,6,1,0,0,0], [0,0,0,1,6,1,0,0,0,1,6,1,0,0,0,0],
-        [0,0,0,1,6,1,0,0,0,1,6,1,0,0,0,0], [0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    ]
+// Configuration des Biomes
+const BIOME_TYPES = {
+    FOREST: { color: '#27ae60', ground: '#2ecc71', tree: 'TREE', rock: 'STONE', mob: null, rare: null },
+    DESERT: { color: '#e67e22', ground: '#f1c40f', tree: null, rock: 'ROCK_GOLD', mob: 'SCORPION', rare: 'gold_rock' },
+    SNOW:   { color: '#bdc3c7', ground: '#ecf0f1', tree: null, rock: 'IRON_ROCK', mob: 'WOLF', rare: 'iron_rock' },
+    VOLCANO:{ color: '#c0392b', ground: '#581212', tree: null, rock: 'RUBY', mob: 'DEMON', rare: 'ruby' }
 };
 
-const BIOMES = { 
-    FOREST:{start:0,end:1000,color:'#27ae60',ground:'#2ecc71',asset:'TREE'}, 
-    DESERT:{start:1000,end:2000,color:'#e67e22',ground:'#f1c40f',asset:'ROCK_GOLD'}, 
-    SNOW:{start:2000,end:3000,color:'#bdc3c7',ground:'#ecf0f1',asset:'IRON_ROCK'}, 
-    VOLCANO:{start:3000,end:4000,color:'#c0392b',ground:'#2c0505',asset:'RUBY'} 
+const PIXEL_ASSETS = {
+    PLAYER_IDLE: [[0,0,1,1,1,1,0,0],[0,1,6,2,2,6,1,0],[0,1,6,2,2,6,1,0],[0,0,1,3,3,1,0,0],[0,0,1,3,3,1,0,0],[0,0,1,2,2,1,0,0],[0,0,1,3,3,1,0,0],[0,1,3,0,0,3,1,0]],
+    PLAYER_SWORD:[[1,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0],[0,1,1,0,0,0,0,0],[0,0,1,1,1,1,1,0],[0,0,1,3,3,1,0,0],[0,0,1,2,2,1,0,0],[0,0,1,3,3,1,0,0],[0,1,3,0,0,3,1,0]],
+    TREE:        [[0,0,4,4,4,4,0,0],[0,4,4,4,4,4,4,0],[4,4,4,4,4,4,4,4],[0,0,0,3,3,0,0,0],[0,0,0,3,3,0,0,0],[0,0,0,3,3,0,0,0],[0,0,0,3,3,0,0,0],[0,0,0,3,3,0,0,0]],
+    STONE:       [[0,0,5,5,5,5,0,0],[0,5,5,5,5,5,5,0],[5,5,5,1,5,5,5,5],[5,5,1,5,5,5,5,5],[0,5,5,5,5,5,5,0],[0,0,5,5,5,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+    SLIME:       [[0,0,4,4,4,4,0,0],[0,4,4,4,4,4,4,0],[4,4,4,4,4,4,4,4],[4,4,1,4,4,1,4,4],[4,4,4,4,4,4,4,4],[0,4,4,1,1,4,4,0],[0,0,4,4,4,4,0,0],[0,0,0,0,0,0,0,0]],
+    HOUSE_LVL1:  [[0,0,0,1,1,0,0,0],[0,0,1,6,6,1,0,0],[0,1,3,3,3,3,1,0],[1,3,3,3,3,3,3,1],[1,3,2,1,1,2,3,1],[1,3,2,1,1,2,3,1],[1,3,3,3,3,3,3,1],[1,1,1,1,1,1,1,1]],
+    HOUSE_LVL2:  [[0,0,1,2,2,1,0,0],[0,1,3,3,3,3,1,0],[1,3,7,7,7,7,3,1],[1,3,7,2,2,7,3,1],[1,3,7,2,2,7,3,1],[1,3,7,7,7,7,3,1],[1,3,3,3,3,3,3,1],[1,1,1,1,1,1,1,1]],
+    ROCK_GOLD:   [[0,7,7,7,7,0,0,0],[7,7,5,5,5,7,7,0],[7,5,5,7,5,5,7,7],[5,7,5,5,5,5,7,0],[5,5,7,7,5,5,0,0],[0,5,5,5,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+    SCORPION:    [[1,0,0,0,0,0,0,1],[0,1,0,0,0,0,1,0],[0,0,1,1,1,1,0,0],[0,0,1,6,6,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+    IRON_ROCK:   [[0,0,10,10,10,10,0,0],[0,10,5,5,5,10,10,0],[10,5,5,10,5,5,10,10],[5,10,5,5,5,5,10,0],[5,5,10,10,5,5,0,0],[0,5,5,5,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+    WOLF:        [[0,1,1,0,0,1,1,0],[1,2,2,1,1,2,2,1],[1,2,2,2,2,2,2,1],[0,1,2,2,2,2,1,0],[0,0,1,2,2,1,0,0],[0,0,1,1,1,1,0,0],[0,0,1,0,0,1,0,0],[0,0,1,0,0,1,0,0]],
+    RUBY:        [[0,0,0,9,9,0,0,0],[0,0,9,9,9,9,0,0],[0,9,9,1,1,9,9,0],[9,9,1,9,9,1,9,9],[9,1,9,9,9,9,1,9],[9,9,9,1,1,9,9,9],[0,9,9,9,9,9,9,0],[0,0,0,0,0,0,0,0]],
+    DEMON:       [[0,6,0,1,1,0,6,0],[1,6,1,6,6,1,6,1],[1,1,1,6,6,1,1,1],[0,1,1,6,6,1,1,0],[0,0,1,6,6,1,0,0],[0,0,1,3,3,1,0,0],[0,0,1,3,3,1,0,0],[0,0,1,0,0,1,0,0]],
+    BOSS:        [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0],[0,0,0,0,1,6,6,6,6,1,0,0,0,0,0,0],[0,0,0,1,6,6,1,6,6,6,1,0,0,0,0,0],[0,0,1,6,6,6,6,6,6,6,6,1,0,0,0,0],[0,1,6,6,6,6,6,6,6,6,6,6,1,0,0,0],[1,6,6,6,1,1,6,6,1,1,6,6,6,1,0,0],[1,6,6,6,6,6,6,6,6,6,6,6,6,1,0,0],[1,6,6,6,6,6,6,6,6,6,6,6,6,1,0,0],[0,1,6,6,6,1,1,1,1,1,6,6,6,1,0,0],[0,0,1,6,6,1,0,0,0,1,6,6,1,0,0,0],[0,0,0,1,6,1,0,0,0,1,6,1,0,0,0,0],[0,0,0,1,6,1,0,0,0,1,6,1,0,0,0,0],[0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
 };
+
 const QUESTS = [ 
     { id: 0, txt: "Récolter 10 BOIS", type: 'wood', target: 10 },
     { id: 1, txt: "Fabriquer une MAISON", type: 'house', target: 1 },
     { id: 2, txt: "Récolter 10 PIERRES", type: 'stone', target: 10 },
     { id: 3, txt: "Améliorer la HACHE (Niv 2)", type: 'axe', target: 2 },
-    { id: 4, txt: "Explorer le DÉSERT (Est)", type: 'explore_desert', target: 1 },
+    { id: 4, txt: "Trouver un DÉSERT (Scorpions)", type: 'explore_desert', target: 1 },
     { id: 5, txt: "Trouver 5 OR (Désert)", type: 'gold', target: 5 },
-    { id: 6, txt: "Fabriquer une ÉPÉE en Or (Niv 3)", type: 'sword', target: 3 },
-    { id: 7, txt: "Explorer la NEIGE", type: 'explore_snow', target: 1 },
-    { id: 8, txt: "Tuer 3 LOUPS Blancs", type: 'kill_wolf', target: 3 },
-    { id: 9, txt: "Trouver 5 FER", type: 'iron', target: 5 },
-    { id: 10, txt: "Explorer le VOLCAN (Fin)", type: 'explore_volcano', target: 1 },
+    { id: 6, txt: "Fabriquer ÉPÉE OR (Niv 3)", type: 'sword', target: 3 },
+    { id: 7, txt: "Trouver la NEIGE", type: 'explore_snow', target: 1 },
+    { id: 8, txt: "Tuer 3 LOUPS", type: 'kill_wolf', target: 3 },
+    { id: 9, txt: "Trouver 5 FER (Neige)", type: 'iron', target: 5 },
+    { id: 10, txt: "Trouver le VOLCAN", type: 'explore_volcano', target: 1 },
     { id: 11, txt: "Tuer le ROI DÉMON", type: 'kill_boss', target: 1 },
-    { id: 12, txt: "VOUS ÊTES LE MAÎTRE DE L'ÎLE !", type: 'win', target: 0 }
+    { id: 12, txt: "VOUS ÊTES LE MAÎTRE !", type: 'win', target: 0 }
 ]; 
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
+const minimapCanvas = document.getElementById('minimapCanvas');
+const ctxMini = minimapCanvas.getContext('2d');
 
 let isGameRunning = true;
 let lastTime = 0;
-let keys = {}; // Pour stocker l'état du clavier
+let keys = {}; 
 let isMenuOpen = false;
+let isMinimapOpen = false;
+
+// Grille des biomes (ex: mapGrid[y][x] = 'FOREST')
+let mapGrid = []; 
 
 let game = { 
     player: { x: 500, y: 500, hp: 100, maxHp: 100, speed: 6, size: 24, angle: 0, iframes: 0 }, 
@@ -221,56 +199,106 @@ let game = {
     particles: [] 
 };
 
-
-// --- FONCTIONS DE RENDU PIXEL ART ---
-function drawPixelArt(assetName, x, y, scale = SCALE_BASE) {
-    const asset = PIXEL_ASSETS[assetName];
-    if (!asset) return; 
-    const size = asset.length;
-    const halfSize = (size * scale) / 2;
-    ctx.save();
-    ctx.translate(x - halfSize, y - halfSize);
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            const colorIndex = asset[r][c];
-            if (colorIndex !== 0) {
-                ctx.fillStyle = PALETTE[colorIndex] || '#FF00FF';
-                ctx.fillRect(c * scale, r * scale, scale, scale);
-            }
-        }
-    }
-    ctx.restore();
-}
-
-// --- INITIALISATION ---
+// --- GENERATION MONDE ALEATOIRE ---
 function init() {
     resize();
-    generateWorld();
+    generateBiomes();
+    generateObjects();
     setupInputs();
     requestAnimationFrame(loop);
 }
 
-function generateWorld() {
+function generateBiomes() {
+    const rows = Math.ceil(WORLD_H / CHUNK_SIZE);
+    const cols = Math.ceil(WORLD_W / CHUNK_SIZE);
+    mapGrid = [];
+
+    for(let y=0; y<rows; y++) {
+        let row = [];
+        for(let x=0; x<cols; x++) {
+            // Le spawn (0,0) est forcé en FOREST
+            if (x===0 && y===0) {
+                row.push('FOREST');
+                continue;
+            }
+            // Choix aléatoire
+            const r = Math.random();
+            if(r < 0.4) row.push('FOREST');
+            else if(r < 0.65) row.push('DESERT');
+            else if(r < 0.85) row.push('SNOW');
+            else row.push('VOLCANO');
+        }
+        mapGrid.push(row);
+    }
+}
+
+function getBiomeAt(x, y) {
+    let col = Math.floor(x / CHUNK_SIZE);
+    let row = Math.floor(y / CHUNK_SIZE);
+    if(row < 0 || row >= mapGrid.length || col < 0 || col >= mapGrid[0].length) return 'FOREST'; // Bordure
+    return mapGrid[row][col];
+}
+
+function generateObjects() {
     game.objects = [];
-    const spawn = (type, minX, maxX, count) => {
-        for(let i=0; i<count; i++) {
-            let x = minX + Math.random()*(maxX-minX);
-            let y = Math.random()*WORLD_H;
-            createObject(type, x, y);
+
+    // Fonction pour trouver un point aléatoire dans un biome spécifique
+    const getRandomSpotInBiome = (targetBiome) => {
+        for(let i=0; i<50; i++) { // 50 tentatives
+            let x = Math.random() * WORLD_W;
+            let y = Math.random() * WORLD_H;
+            if(getBiomeAt(x, y) === targetBiome) return {x, y};
+        }
+        return null; // Pas trouvé
+    };
+
+    // 1. Ressources de base (partout sauf si logique spéciale)
+    for(let i=0; i<800; i++) {
+        let x = Math.random() * WORLD_W;
+        let y = Math.random() * WORLD_H;
+        let b = getBiomeAt(x, y);
+        if(b === 'FOREST') createObject('tree', x, y);
+        else if(Math.random() < 0.3) createObject('stone', x, y); // Pierre possible partout mais moins
+    }
+
+    // 2. Ressources Spécifiques aux biomes
+    for(let i=0; i<300; i++) {
+        let x = Math.random() * WORLD_W;
+        let y = Math.random() * WORLD_H;
+        let b = getBiomeAt(x, y);
+        if(b === 'DESERT') createObject('gold_rock', x, y);
+        if(b === 'SNOW') createObject('iron_rock', x, y);
+        if(b === 'VOLCANO') createObject('ruby', x, y);
+    }
+
+    // 3. Mobs (PAS DANS LA FORET)
+    const spawnMob = (type, count) => {
+        let spawned = 0;
+        while(spawned < count) {
+            let x = Math.random() * WORLD_W;
+            let y = Math.random() * WORLD_H;
+            let b = getBiomeAt(x, y);
+            
+            let valid = false;
+            if(type === 'slime' && b !== 'FOREST') valid = true; // Slime partout sauf foret
+            if(type === 'scorpion' && b === 'DESERT') valid = true;
+            if(type === 'wolf' && b === 'SNOW') valid = true;
+            if(type === 'demon' && b === 'VOLCANO') valid = true;
+
+            if(valid) { createObject(type, x, y); spawned++; }
         }
     };
 
-    spawn('tree', 0, 1000, 120);
-    spawn('stone', 0, 1000, 60);
-    spawn('slime', SAFE_ZONE_X, 1000, 10);
-    spawn('gold_rock', 1000, 2000, 40);
-    spawn('scorpion', 1000, 2000, 15);
-    spawn('iron_rock', 2000, 3000, 50);
-    spawn('wolf', 2000, 3000, 18);
-    spawn('ruby', 3000, 4000, 30);
-    spawn('demon', 3000, 4000, 12);
-    createObject('boss', 3800, 2000);
-    for(let a=0; a<Math.PI*2; a+=0.5) createObject('wall', 3800+Math.cos(a)*400, 2000+Math.sin(a)*400);
+    spawnMob('slime', 50);
+    spawnMob('scorpion', 60);
+    spawnMob('wolf', 60);
+    spawnMob('demon', 40);
+
+    // Boss (Volcan lointain)
+    let bossSpot = getRandomSpotInBiome('VOLCANO');
+    if(!bossSpot) bossSpot = {x: 9500, y: 9500};
+    createObject('boss', bossSpot.x, bossSpot.y);
+    for(let a=0; a<Math.PI*2; a+=0.5) createObject('wall', bossSpot.x+Math.cos(a)*400, bossSpot.y+Math.sin(a)*400);
 }
 
 function createObject(type, x, y) {
@@ -287,75 +315,62 @@ function createObject(type, x, y) {
     if(type==='wolf') { o.asset='WOLF'; o.hp=100; o.maxHp=100; o.hostile=true; o.speed=5; o.dmg=15; o.size=35; }
     if(type==='demon') { o.asset='DEMON'; o.hp=150; o.maxHp=150; o.hostile=true; o.speed=3.5; o.dmg=25; o.size=35; }
     if(type==='boss') { o.asset='BOSS'; o.hp=1000; o.maxHp=1000; o.hostile=true; o.speed=4.5; o.dmg=40; o.size=80; o.isBoss=true; }
-    
     if(type==='wall') { o.asset='STONE'; o.hp=9999; o.solid=true; o.size=40; }
     
     game.objects.push(o);
 }
 
-// --- GAME LOOP ---
+// --- GAME LOOP & UPDATE ---
 function loop(time) {
     if(!isGameRunning) return;
-    let dt = time - lastTime;
-    lastTime = time;
+    let dt = time - lastTime; lastTime = time;
     update(dt);
     draw();
+    if(isMinimapOpen) drawMinimap();
     updateUI();
     if(game.player.hp <= 0) { showDeathScreen(); return; }
     requestAnimationFrame(loop);
 }
 
 function update(dt) {
-    // 1. MOUVEMENT ZQSD / FLECHES
-    let dx = 0;
-    let dy = 0;
-    
-    // Z / Fleche Haut
+    // Mouvement ZQSD
+    let dx = 0, dy = 0;
     if (keys['KeyW'] || keys['KeyZ'] || keys['ArrowUp']) dy = -1;
-    // S / Fleche Bas
     if (keys['KeyS'] || keys['ArrowDown']) dy = 1;
-    // Q / A / Fleche Gauche
     if (keys['KeyA'] || keys['KeyQ'] || keys['ArrowLeft']) dx = -1;
-    // D / Fleche Droite
     if (keys['KeyD'] || keys['ArrowRight']) dx = 1;
 
     if (dx !== 0 || dy !== 0) {
-        // Normaliser la vitesse diagonale
         let length = Math.sqrt(dx*dx + dy*dy);
-        dx /= length;
-        dy /= length;
-
-        let angle = Math.atan2(dy, dx);
-        game.player.angle = angle; // Le perso regarde où il marche
-        
+        dx /= length; dy /= length;
+        game.player.angle = Math.atan2(dy, dx);
         let nx = game.player.x + dx * game.player.speed;
         let ny = game.player.y + dy * game.player.speed;
-        
         nx = Math.max(0, Math.min(WORLD_W, nx));
         ny = Math.max(0, Math.min(WORLD_H, ny));
 
         let collide = game.objects.some(o => o.solid && Math.hypot(nx-o.x, ny-o.y) < game.player.size + o.size/2);
         if(!collide) { game.player.x = nx; game.player.y = ny; }
-        
-        if(nx > 1000 && nx < 2000) checkQuest('explore_desert', 1);
-        if(nx > 2000 && nx < 3000) checkQuest('explore_snow', 1);
-        if(nx > 3000) checkQuest('explore_volcano', 1);
     }
 
-    // 2. CAMERA
+    // Quests Explo
+    let currentBiome = getBiomeAt(game.player.x, game.player.y);
+    if(currentBiome === 'DESERT') checkQuest('explore_desert', 1);
+    if(currentBiome === 'SNOW') checkQuest('explore_snow', 1);
+    if(currentBiome === 'VOLCANO') checkQuest('explore_volcano', 1);
+
+    // Camera
     game.camera.x = game.player.x - canvas.width/2;
     game.camera.y = game.player.y - canvas.height/2;
 
-    // 3. ENTITIES & MOBS
+    // Mobs Logic
     if(game.player.iframes > 0) game.player.iframes--;
-
     game.objects.forEach(o => {
         if(o.hostile && o.hp > 0) {
             let dist = Math.hypot(game.player.x - o.x, game.player.y - o.y);
-            if(dist < 400) { 
+            if(dist < 400) { // Aggro range
                 o.x += (game.player.x - o.x) / dist * o.speed;
                 o.y += (game.player.y - o.y) / dist * o.speed;
-                
                 if(dist < game.player.size + o.size/2 && game.player.iframes <= 0) {
                     game.player.hp -= o.dmg;
                     game.player.iframes = 40;
@@ -365,45 +380,68 @@ function update(dt) {
         }
     });
 
-    // 4. HOUSE HEALING
+    // House Heal
     if(game.house.active) {
         let dist = Math.hypot(game.player.x - game.house.x, game.player.y - game.house.y);
-        if(dist < 100) {
+        if(dist < 150) {
             game.house.cooldown++;
-            if(game.house.cooldown > (60 - game.house.lvl*10) && game.player.hp < game.player.maxHp) {
-                game.player.hp = Math.min(game.player.maxHp, game.player.hp + 2);
-                game.house.cooldown = 0;
+            if(game.house.cooldown > 30 && game.player.hp < game.player.maxHp) {
+                game.player.hp += 2; game.house.cooldown = 0;
                 createFloatText("💚", game.player.x, game.player.y-30, '#2ecc71');
             }
         }
     }
 
-    // 5. CYCLE JOUR / NUIT
-    game.dayTime += 0.0005;
+    // Jour/Nuit
+    game.dayTime += 0.0003; // Plus lent sur grande map
     if(game.dayTime > 1) game.dayTime = 0;
 }
 
+// --- RENDU ---
+function drawPixelArt(assetName, x, y, scale = SCALE_BASE) {
+    const asset = PIXEL_ASSETS[assetName];
+    if (!asset) return; 
+    const size = asset.length;
+    const halfSize = (size * scale) / 2;
+    ctx.save(); ctx.translate(x - halfSize, y - halfSize);
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const ci = asset[r][c];
+            if (ci !== 0) { ctx.fillStyle = PALETTE[ci]; ctx.fillRect(c * scale, r * scale, scale, scale); }
+        }
+    }
+    ctx.restore();
+}
+
 function draw() {
-    ctx.fillStyle = BIOMES.FOREST.ground;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 1. Background Grid (Optimisé: dessine seulement les chunks visibles)
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
     ctx.save();
     ctx.translate(-game.camera.x, -game.camera.y);
 
-    // DRAW GROUND
-    ctx.fillStyle = BIOMES.FOREST.ground; ctx.fillRect(0, 0, 1000, WORLD_H);
-    ctx.fillStyle = BIOMES.DESERT.ground; ctx.fillRect(1000, 0, 1000, WORLD_H);
-    ctx.fillStyle = BIOMES.SNOW.ground; ctx.fillRect(2000, 0, 1000, WORLD_H);
-    ctx.fillStyle = BIOMES.VOLCANO.ground; ctx.fillRect(3000, 0, 1000, WORLD_H);
+    let startCol = Math.floor(game.camera.x / CHUNK_SIZE);
+    let endCol = startCol + Math.ceil(canvas.width / CHUNK_SIZE) + 1;
+    let startRow = Math.floor(game.camera.y / CHUNK_SIZE);
+    let endRow = startRow + Math.ceil(canvas.height / CHUNK_SIZE) + 1;
 
-    // DRAW OBJECTS
+    for(let r = startRow; r < endRow; r++) {
+        for(let c = startCol; c < endCol; c++) {
+            if(r >= 0 && r < mapGrid.length && c >= 0 && c < mapGrid[0].length) {
+                let type = mapGrid[r][c];
+                ctx.fillStyle = BIOME_TYPES[type].ground;
+                ctx.fillRect(c*CHUNK_SIZE, r*CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+            }
+        }
+    }
+
+    // 2. Objects
     game.objects.sort((a,b) => a.y - b.y);
     for(let o of game.objects) {
-        let scale = o.isBoss ? SCALE_BASE * 3 : SCALE_BASE;
-        
         if(o.x + o.size < game.camera.x || o.x - o.size > game.camera.x + canvas.width || 
            o.y + o.size < game.camera.y || o.y - o.size > game.camera.y + canvas.height) continue;
         
+        let scale = o.isBoss ? SCALE_BASE * 3 : SCALE_BASE;
         drawPixelArt(o.asset, o.x, o.y, scale);
         
         if(o.hp < o.maxHp || o.isBoss) {
@@ -414,23 +452,24 @@ function draw() {
         }
     }
 
-    // DRAW HOUSE
+    // 3. House
     if(game.house.active) {
         let hAsset = (game.house.lvl == 1) ? 'HOUSE_LVL1' : 'HOUSE_LVL2';
         drawPixelArt(hAsset, game.house.x, game.house.y, SCALE_BASE * 2);
     }
 
-    // DRAW PLAYER
+    // 4. Player
     if(game.player.iframes % 4 < 2) {
         let pAsset = (game.inv.sword > 1) ? 'PLAYER_SWORD' : 'PLAYER_IDLE';
         drawPixelArt(pAsset, game.player.x, game.player.y, SCALE_BASE * 1.5);
     }
     
+    // 5. Nuit
     let darkness = 0;
     if(game.dayTime > 0.7 || game.dayTime < 0.2) darkness = 0.6; 
     document.getElementById('night-overlay').style.opacity = darkness;
 
-    // PARTICLES
+    // 6. Particules
     for(let i=game.particles.length-1; i>=0; i--) {
         let p = game.particles[i];
         p.y -= 1; p.life--;
@@ -444,7 +483,35 @@ function draw() {
     ctx.restore();
 }
 
-// --- ACTIONS & QUESTS ---
+function drawMinimap() {
+    // Dessine la carte entière sur un petit canvas
+    const scaleX = minimapCanvas.width / WORLD_W;
+    const scaleY = minimapCanvas.height / WORLD_H;
+    
+    ctxMini.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+    // Fond des biomes
+    for(let r=0; r<mapGrid.length; r++) {
+        for(let c=0; c<mapGrid[r].length; c++) {
+            ctxMini.fillStyle = BIOME_TYPES[mapGrid[r][c]].color;
+            ctxMini.fillRect(c*CHUNK_SIZE*scaleX, r*CHUNK_SIZE*scaleY, CHUNK_SIZE*scaleX, CHUNK_SIZE*scaleY);
+        }
+    }
+
+    // Maison
+    if(game.house.active) {
+        ctxMini.fillStyle = '#00FF00';
+        ctxMini.fillRect(game.house.x*scaleX - 2, game.house.y*scaleY - 2, 4, 4);
+    }
+
+    // Joueur
+    ctxMini.fillStyle = 'red';
+    ctxMini.beginPath();
+    ctxMini.arc(game.player.x*scaleX, game.player.y*scaleY, 3, 0, Math.PI*2);
+    ctxMini.fill();
+}
+
+// --- LOGIQUE JEU ---
 function handleAction() {
     let t = getNearestTarget();
     if(!t) return;
@@ -472,7 +539,7 @@ function handleAction() {
 }
 
 function getNearestTarget() {
-    let closest = null, minDist = 150; // Augmenté pour le confort PC
+    let closest = null, minDist = 150;
     for(let o of game.objects) {
         if(o.type === 'wall') continue;
         let d = Math.hypot(game.player.x - o.x, game.player.y - o.y);
@@ -487,14 +554,13 @@ function checkQuest(type, amount) {
     if(q.type === type) {
         game.quest.progress += amount;
         if(game.quest.progress >= q.target) {
-            createFloatText("🏆 QUÊTE TERMINÉE !", game.player.x, game.player.y - 50, 'gold');
+            createFloatText("🏆 QUÊTE FINIE !", game.player.x, game.player.y - 50, 'gold');
             game.quest.id++;
             game.quest.progress = 0;
         }
     }
 }
 
-// --- CRAFTING SYSTEM ---
 game.craft = function(item) {
     let msg = "";
     if(item === 'house') {
@@ -504,26 +570,20 @@ game.craft = function(item) {
         if(game.inv.wood >= c.w) {
             game.inv.wood -= c.w;
             if(game.house.lvl === 0) { game.house.active = true; game.house.x = game.player.x; game.house.y = game.player.y; checkQuest('house', 1); }
-            game.house.lvl++;
-            msg = "MAISON AMÉLIORÉE";
+            game.house.lvl++; msg = "BASE UP!";
         }
     }
-    if(item === 'armor') {
-        if(!game.house.active) return;
-        let costs = [{s:50,w:50},{s:100,i:10},{s:200,ob:5}];
-        if(game.inv.armor >= 3) return;
-        let c = costs[game.inv.armor];
-        
-        let ok = false;
-        if(game.inv.armor==0 && game.inv.stone>=c.s && game.inv.wood>=c.w) { game.inv.stone-=c.s; game.inv.wood-=c.w; ok=true; }
-        if(game.inv.armor==1 && game.inv.stone>=c.s && game.inv.iron>=c.i) { game.inv.stone-=c.s; game.inv.iron-=c.i; ok=true; }
-        if(game.inv.armor==2 && game.inv.stone>=c.s && game.inv.obsi>=c.ob) { game.inv.stone-=c.s; game.inv.obsi-=c.ob; ok=true; }
-
-        if(ok) {
-            game.inv.armor++;
-            game.player.maxHp += 100; game.player.hp = game.player.maxHp;
-            msg = "ARMURE ÉQUIPÉE";
-        }
+    // Reste du craft identique...
+    if(item === 'armor' && game.house.active) {
+         let costs = [{s:50,w:50},{s:100,i:10},{s:200,ob:5}];
+         if(game.inv.armor < 3) {
+             let c = costs[game.inv.armor];
+             let ok=false;
+             if(game.inv.armor==0 && game.inv.stone>=c.s && game.inv.wood>=c.w) {game.inv.stone-=c.s; game.inv.wood-=c.w; ok=true;}
+             if(game.inv.armor==1 && game.inv.stone>=c.s && game.inv.iron>=c.i) {game.inv.stone-=c.s; game.inv.iron-=c.i; ok=true;}
+             if(game.inv.armor==2 && game.inv.stone>=c.s && game.inv.obsi>=c.ob) {game.inv.stone-=c.s; game.inv.obsi-=c.ob; ok=true;}
+             if(ok) { game.inv.armor++; game.player.maxHp+=100; game.player.hp=game.player.maxHp; msg="ARMURE UP!"; }
+         }
     }
     if(item === 'axe' && game.inv.wood >= game.inv.axe*20) { game.inv.wood -= game.inv.axe*20; game.inv.axe++; checkQuest('axe', 1); msg="HACHE UP !"; }
     if(item === 'pick' && game.inv.wood >= 20 && game.inv.stone >= 20) { game.inv.wood-=20; game.inv.stone-=20; game.inv.pick++; msg="PIOCHE UP !"; }
@@ -532,7 +592,7 @@ game.craft = function(item) {
     if(msg) { createFloatText(msg, game.player.x, game.player.y, '#fff'); updateUI(); }
 };
 
-// --- UI UPDATE ---
+// --- UI & RESPAWN ---
 function updateUI() {
     document.getElementById('hud-hp').innerText = Math.floor(game.player.hp) + "/" + game.player.maxHp;
     document.getElementById('hud-wood').innerText = game.inv.wood;
@@ -542,74 +602,56 @@ function updateUI() {
     document.getElementById('hud-obsi').innerText = game.inv.obsi;
 
     let q = QUESTS[game.quest.id];
-    document.getElementById('quest-txt').innerText = q ? `${q.txt} (${game.quest.progress}/${q.target})` : "TOUTES QUÊTES FINIES !";
+    document.getElementById('quest-txt').innerText = q ? `${q.txt} (${game.quest.progress}/${q.target})` : "Gagné !";
 
-    // Menu Texts
+    // Menu cost updates (simplifié pour lisibilité)
+    document.getElementById('house-cost').innerText = (game.house.lvl<3) ? ["50 B", "150 B", "300 B"][game.house.lvl] : "MAX";
     document.getElementById('house-lvl').innerText = game.house.lvl;
-    document.getElementById('armor-lvl').innerText = game.inv.armor;
-    document.getElementById('axe-lvl-menu').innerText = "Niv " + game.inv.axe;
-    document.getElementById('pick-lvl-menu').innerText = "Niv " + game.inv.pick;
-    document.getElementById('sword-lvl-menu').innerText = "Niv " + game.inv.sword;
-
-    document.getElementById('axe-cost').innerText = (game.inv.axe*20) + " Bois";
-    document.getElementById('pick-cost').innerText = (game.inv.pick*20) + " Bois / " + (game.inv.pick*20) + " Pierre";
-    document.getElementById('sword-cost').innerText = "50 Bois / " + (game.inv.sword*5) + " Or";
-    
-    let houseC = ["50 B", "150 B", "300 B"][game.house.lvl] || "MAX";
-    document.getElementById('house-cost').innerText = houseC;
-    
-    let armorC = ["50 P / 50 B", "100 P / 10 Fer", "200 P / 5 Obsi"][game.inv.armor] || "MAX";
-    document.getElementById('armor-cost').innerText = armorC;
 }
 
-function createFloatText(txt, x, y, col) {
-    game.particles.push({txt, x, y, col, life:40});
-}
+function createFloatText(txt, x, y, col) { game.particles.push({txt, x, y, col, life:40}); }
 
 function showDeathScreen() {
     isGameRunning = false;
     document.getElementById('death-screen').style.display = 'block';
+    // Affiche le bouton respawn seulement si la maison est construite
+    document.getElementById('btn-respawn').style.display = game.house.active ? 'block' : 'none';
 }
 
-// --- MENU & INPUTS PC ---
+function respawnBase() {
+    if(!game.house.active) return;
+    game.player.x = game.house.x;
+    game.player.y = game.house.y;
+    game.player.hp = game.player.maxHp;
+    isGameRunning = true;
+    document.getElementById('death-screen').style.display = 'none';
+    loop(performance.now());
+}
 
-function toggleMenu(forceState) {
-    const menu = document.getElementById('craft-menu');
-    if (forceState !== undefined) isMenuOpen = forceState;
-    else isMenuOpen = !isMenuOpen;
-    
-    menu.style.display = isMenuOpen ? 'block' : 'none';
+function toggleMenu(state) {
+    isMenuOpen = (state!==undefined) ? state : !isMenuOpen;
+    document.getElementById('craft-menu').style.display = isMenuOpen ? 'block' : 'none';
     if(isMenuOpen) updateUI();
 }
 
+function toggleMinimap() {
+    isMinimapOpen = !isMinimapOpen;
+    document.getElementById('minimap-container').style.display = isMinimapOpen ? 'block' : 'none';
+}
+
 function setupInputs() {
-    // CLAVIER (ZQSD + TAB)
     window.addEventListener('keydown', e => {
-        if (e.code === 'Tab') {
-            e.preventDefault();
-            toggleMenu();
-        }
+        if (e.code === 'Tab') { e.preventDefault(); toggleMenu(); }
+        if (e.code === 'CapsLock') { e.preventDefault(); toggleMinimap(); }
         keys[e.code] = true;
     });
-    
-    window.addEventListener('keyup', e => {
-        keys[e.code] = false;
-    });
-
-    // SOURIS (CLIC GAUCHE pour attaquer)
-    canvas.addEventListener('mousedown', e => {
-        if (e.button === 0) { // Clic gauche
-            handleAction();
-        }
-    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+    canvas.addEventListener('mousedown', e => { if (e.button === 0) handleAction(); });
 }
 
-function resize() {
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-}
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize);
 
-// START
 init();
 
 </script>
