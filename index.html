@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Survival RPG ULTIMATE - Prix Affichés</title>
+<title>Survival RPG ULTIMATE - Vitesse & Bottes</title>
 <style>
     /* --- CSS GLOBAL --- */
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; font-family: 'Segoe UI', sans-serif; }
@@ -41,7 +41,6 @@
     .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c3e50; width: 80%; max-width: 700px; border: 4px solid #fff; border-radius: 15px; display: none; z-index: 5000; padding: 20px; color: #fff; pointer-events: auto; box-shadow: 0 0 50px #000; overflow-y: auto; text-align: center; max-height: 90vh; }
     .modal h2 { color: #f1c40f; margin-top: 0; border-bottom: 1px solid #555; padding-bottom: 10px; }
     
-    /* Style amélioré pour le menu Craft */
     .craft-row { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #555; text-align: left; }
     .craft-info { flex-grow: 1; }
     .cost { display: block; color: #e74c3c; font-weight: bold; font-size: 0.9em; margin-top: 4px; }
@@ -135,6 +134,15 @@
 
     <h3 style="text-align:left; margin:10px 0; border-bottom:1px solid #555;">OUTILS</h3>
 
+    <div class="craft-row" style="border-left: 5px solid #e67e22;">
+        <div class="craft-info">
+            <strong>👞 BOTTES (Niv <span id="boots-lvl-menu">0</span>)</strong><br>
+            <small>Augmente la vitesse de déplacement.</small><br>
+            <span class="cost" id="boots-cost">Coût: ...</span>
+        </div>
+        <button class="btn" id="btn-boots" onclick="game.craft('boots')">AMÉLIORER</button>
+    </div>
+
     <div class="craft-row">
         <div class="craft-info">
             <strong>🪓 HACHE</strong> <small id="axe-lvl-menu">Niv 1</small><br>
@@ -176,7 +184,7 @@
 
 <script>
 /**
- * SURVIVAL RPG ULTIMATE - 100K WORLD + PRIX AFFICHÉS
+ * SURVIVAL RPG ULTIMATE - 100K WORLD + BOOTS
  */
 
 const WORLD_W = 100000; 
@@ -245,8 +253,9 @@ let isMinimapOpen = false;
 let isControlsOpen = false;
 
 let game = { 
-    player: { x: 15000, y: 15000, hp: 100, maxHp: 100, speed: 7, size: 24, angle: 0, iframes: 0 }, 
-    inv: { wood:0, stone:0, gold:0, iron:0, ruby:0, axe:1, pick:1, sword:1, armor:0 }, 
+    // VITESSE DE BASE REDUITE A 4 (au lieu de 7)
+    player: { x: 15000, y: 15000, hp: 100, maxHp: 100, speed: 4, size: 24, angle: 0, iframes: 0 }, 
+    inv: { wood:0, stone:0, gold:0, iron:0, ruby:0, axe:1, pick:1, sword:1, armor:0, boots:0 }, 
     house: { active: false, x: 0, y: 0, lvl: 0, cooldown: 0 }, 
     quest: { id: 0, progress: 0 }, 
     dayTime: 0, 
@@ -499,7 +508,7 @@ game.craft = function(item) {
             }
         }
     }
-    // ARMURE (Avec Rubis au lieu d'Obsi)
+    // ARMURE
     if(item === 'armor' && game.house.active) {
          let costs = [{s:50,w:50},{s:100,i:10},{s:200,r:5}];
          if(game.inv.armor < 3) {
@@ -510,6 +519,25 @@ game.craft = function(item) {
              if(game.inv.armor==2 && game.inv.stone>=c.s && game.inv.ruby>=c.r) {game.inv.stone-=c.s; game.inv.ruby-=c.r; ok=true;}
              if(ok) { game.inv.armor++; game.player.maxHp+=100; game.player.hp=game.player.maxHp; msg="ARMURE UP!"; }
          }
+    }
+    // BOTTES (VITESSE)
+    if(item === 'boots') {
+        // Niv 0->1 (50 Bois), 1->2 (50 Pierre), 2->3 (20 Fer), 3->4 (10 Rubis)
+        let costs = [{w:50}, {s:50}, {i:20}, {r:10}];
+        if(game.inv.boots < 4) {
+            let c = costs[game.inv.boots];
+            let ok = false;
+            if(game.inv.boots==0 && game.inv.wood>=c.w) { game.inv.wood-=c.w; ok=true; }
+            else if(game.inv.boots==1 && game.inv.stone>=c.s) { game.inv.stone-=c.s; ok=true; }
+            else if(game.inv.boots==2 && game.inv.iron>=c.i) { game.inv.iron-=c.i; ok=true; }
+            else if(game.inv.boots==3 && game.inv.ruby>=c.r) { game.inv.ruby-=c.r; ok=true; }
+
+            if(ok) {
+                game.inv.boots++;
+                game.player.speed += (game.inv.boots === 4) ? 2 : 1; // Boost de 2 au dernier niveau
+                msg = "VITESSE UP !";
+            }
+        }
     }
     // OUTILS
     if(item === 'axe' && game.inv.wood >= game.inv.axe*20) { game.inv.wood -= game.inv.axe*20; game.inv.axe++; checkQuest('axe', 1); msg="HACHE UP !"; }
@@ -540,6 +568,11 @@ function updateUI() {
     let aCosts = ["50 Pierre + 50 Bois", "100 Pierre + 10 Fer", "200 Pierre + 5 Rubis"];
     document.getElementById('armor-cost').innerText = "Coût: " + ((game.inv.armor<3) ? aCosts[game.inv.armor] : "MAXIMUM ATTEINT");
     document.getElementById('armor-lvl').innerText = game.inv.armor;
+
+    // Bottes
+    let bCosts = ["50 Bois (+1 Vit)", "50 Pierre (+1 Vit)", "20 Fer (+1 Vit)", "10 Rubis (+2 Vit)"];
+    document.getElementById('boots-cost').innerText = "Coût: " + ((game.inv.boots<4) ? bCosts[game.inv.boots] : "VITESSE MAXIMALE");
+    document.getElementById('boots-lvl-menu').innerText = game.inv.boots;
 
     // Outils
     document.getElementById('axe-cost').innerText = "Coût: " + (game.inv.axe*20) + " Bois";
