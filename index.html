@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Survival RPG ULTIMATE - Vitesse & Bottes & NOUVELLES FONCTIONNALITÉS</title>
+<title>Survival RPG - UPDATE DRAGON & PORTAIL</title>
 <link rel="manifest" href="manifest.json">
 <style>
     /* --- CSS GLOBAL --- */
@@ -93,6 +93,7 @@
         <div class="hud-row"><span>🟡 Or</span> <span id="hud-gold">0</span></div>
         <div class="hud-row"><span>⚪ Fer</span> <span id="hud-iron">0</span></div>
         <div class="hud-row"><span>🔴 Rubis</span> <span id="hud-ruby">0</span></div>
+        <div class="hud-row" style="color:#9b59b6;"><span>🔮 Obsid.</span> <span id="hud-obsidian">0</span></div>
         <div class="hud-row" style="margin-top:5px; color:#aaa; font-size:10px;">Map: 100k x 100k</div>
     </div>
     
@@ -159,6 +160,24 @@
 
 <div id="craft-menu" class="modal">
     <h2>🛠️ FORGE & ARTISANAT</h2>
+    
+    <div class="craft-row" style="border-left: 5px solid #8e44ad; background: rgba(50, 0, 50, 0.5);">
+        <div class="craft-info">
+            <strong>🔮 PORTAIL DIMENSIONNEL</strong><br>
+            <small>Accès à la Grotte du Dragon.</small><br>
+            <span class="cost" id="portal-cost">Coût: 50 Rubis</span>
+        </div>
+        <button class="btn" id="btn-portal" style="background:#8e44ad;" onclick="game.craft('portal')">CRÉER</button>
+    </div>
+
+    <div class="craft-row" style="border-left: 5px solid #1abc9c; background: rgba(0, 50, 50, 0.5);">
+        <div class="craft-info">
+            <strong>👤 SKIN: CHEVALIER NOIR</strong><br>
+            <small>Apparence Élite (Armure Obsidienne).</small><br>
+            <span class="cost" id="skin-cost">Coût: 20 Obsidienne</span>
+        </div>
+        <button class="btn" id="btn-skin" style="background:#16a085;" onclick="game.craft('skin')">ACHETER</button>
+    </div>
     
     <div class="craft-row" style="border-left: 5px solid #f39c12;">
         <div class="craft-info">
@@ -279,17 +298,21 @@
 
 <script>
 /**
- * SURVIVAL RPG ULTIMATE - 100K WORLD + NOUVELLES FONCTIONNALITÉS (Vitesse/Bottes, Compétences, Craft avancé)
+ * SURVIVAL RPG ULTIMATE - 100K WORLD
+ * UPDATE: PORTAIL, DRAGON, OBSIDIENNE & SKIN
  */
 
 const WORLD_W = 100000; 
 const WORLD_H = 100000; 
+const CAVE_OFFSET_X = 200000; // Coordonnée lointaine pour la Grotte
+const CAVE_OFFSET_Y = 200000; 
+const CAVE_SIZE = 5000; // Taille de la zone grotte
 const SAFE_FOREST_SIZE = 30000; 
 const BIOME_CHUNK_SIZE = 8000; 
 const SCALE_BASE = 4;
 
 // ====================================================================================
-// PALETTE DE COULEURS MISE À JOUR (Ajout Océan/Marais/Magique)
+// PALETTE DE COULEURS MISE À JOUR (Ajout Grotte)
 // ====================================================================================
 const PALETTE = [
     'rgba(0,0,0,0)', // 0: Transparent
@@ -306,23 +329,29 @@ const PALETTE = [
     '#1c2833',      // 11: Dark Blue/Grey
     '#145a32',      // 12: Very Dark Green (Ombre)
     '#7f3800',      // 13: Swamp Brown
-    '#7b1fa2'       // 14: Magic Purple
+    '#7b1fa2',      // 14: Magic Purple
+    '#2c3e50'       // 15: Cave Ground
 ];
 
 // Configuration des Biomes MISE À JOUR
 const BIOME_TYPES = {
-    OCEAN:  { color: '#1a5276', ground: '#5dade2', tree: null, rock: null, mob: 'SHARK' }, // NOUVEAU
-    SWAMP:  { color: '#385e0f', ground: '#5b832b', tree: 'TREE_SWAMP', rock: 'STONE', mob: 'OGRE' }, // NOUVEAU
-    MAGIC:  { color: '#512e5f', ground: '#9b59b6', tree: 'TREE_MAGIC', rock: 'RUBY', mob: 'GHOST' }, // NOUVEAU
+    OCEAN:  { color: '#1a5276', ground: '#5dade2', tree: null, rock: null, mob: 'SHARK' },
+    SWAMP:  { color: '#385e0f', ground: '#5b832b', tree: 'TREE_SWAMP', rock: 'STONE', mob: 'OGRE' },
+    MAGIC:  { color: '#512e5f', ground: '#9b59b6', tree: 'TREE_MAGIC', rock: 'RUBY', mob: 'GHOST' },
     FOREST: { color: '#27ae60', ground: '#2ecc71', tree: 'TREE', rock: 'STONE', mob: 'SLIME' },
     DESERT: { color: '#e67e22', ground: '#f1c40f', tree: null, rock: 'ROCK_GOLD', mob: 'SCORPION' },
     SNOW:   { color: '#bdc3c7', ground: '#ecf0f1', tree: null, rock: 'IRON_ROCK', mob: 'WOLF' },
-    VOLCANO:{ color: '#c0392b', ground: '#581212', tree: null, rock: 'RUBY', mob: 'DEMON' }
+    VOLCANO:{ color: '#c0392b', ground: '#581212', tree: null, rock: 'RUBY', mob: 'DEMON' },
+    CAVE:   { color: '#000000', ground: '#2c3e50', tree: null, rock: 'OBSIDIAN_ORE', mob: 'DRAGON' } // NOUVEAU BIOME
 };
 
-// Logique de Biome MISE À JOUR (Utilise 4 biomes + Océan/Marais/Magique)
+// Logique de Biome
 function getBiomeAt(x, y) {
-    if (x < 0 || x > WORLD_W || y < 0 || y > WORLD_H) return 'OCEAN'; // Océan aux bords
+    // ZONE SPECIALE GROTTE
+    if (x >= CAVE_OFFSET_X && x < CAVE_OFFSET_X + CAVE_SIZE && y >= CAVE_OFFSET_Y && y < CAVE_OFFSET_Y + CAVE_SIZE) return 'CAVE';
+    if (x > 150000) return 'OCEAN'; // Vide infini ailleurs
+
+    if (x < 0 || x > WORLD_W || y < 0 || y > WORLD_H) return 'OCEAN';
     if (x >= 0 && x < SAFE_FOREST_SIZE && y >= 0 && y < SAFE_FOREST_SIZE) return 'FOREST';
     
     let bx = Math.floor(x / BIOME_CHUNK_SIZE);
@@ -330,63 +359,67 @@ function getBiomeAt(x, y) {
     let noise = Math.sin(bx * 12.9898 + by * 78.233) * 43758.5453;
     let val = noise - Math.floor(noise); 
     
-    // Ajout d'une chance pour Marais et Magique
     if (val < 0.20) return 'FOREST'; 
     if (val < 0.40) return 'DESERT';
     if (val < 0.60) return 'SNOW';
     if (val < 0.75) return 'VOLCANO';
-    if (val < 0.85) return 'SWAMP'; // 10%
-    if (val < 0.95) return 'MAGIC'; // 10%
-    return 'OCEAN'; // 5% d'océan dans la zone centrale
+    if (val < 0.85) return 'SWAMP'; 
+    if (val < 0.95) return 'MAGIC'; 
+    return 'OCEAN'; 
 }
 
-
-// Fonction utilitaire pour créer un tableau 16x16 vide ou rempli d'une seule valeur
 const empty16 = (fill = 0) => Array(16).fill(fill).map(() => Array(16).fill(fill));
 
 // ====================================================================================
-// NOUVEAUX PIXEL ASSETS 16x16 DÉTAILLÉS (Ajouts demandés)
+// PIXEL ASSETS (AJOUT DRAGON, PORTAIL, OBSIDIENNE, SKIN)
 // ====================================================================================
 
 const PIXEL_ASSETS = {
+    // NOUVEAU : SKIN CHEVALIER NOIR (Même forme, couleurs noires/or)
+    PLAYER_SKIN: [
+        [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,1,7,7,1,0,0,0,0,0,0], [0,0,0,0,0,1,7,1,1,7,1,0,0,0,0,0], [0,0,0,0,1,7,1,1,1,1,7,1,0,0,0,0], [0,0,0,1,7,1,1,1,1,1,7,1,0,0,0,0], [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0], [0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0], [0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0], [0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0], [0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0], [0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0]
+    ],
+    // NOUVEAU : PORTAIL (Violet mystique)
+    PORTAL: [
+        [0,0,0,0,14,14,14,14,14,14,0,0,0,0,0,0], [0,0,14,14,14,8,8,14,14,14,14,0,0,0,0,0], [0,14,14,8,8,2,2,8,8,14,14,14,0,0,0,0], [14,14,8,2,2,2,2,2,2,8,14,14,0,0,0,0], [14,14,8,2,2,1,1,2,2,8,14,14,0,0,0,0], [14,14,8,2,1,1,1,1,2,8,14,14,0,0,0,0], [14,14,8,2,1,1,1,1,2,8,14,14,0,0,0,0], [14,14,8,2,1,1,1,1,2,8,14,14,0,0,0,0], [14,14,8,2,1,1,1,1,2,8,14,14,0,0,0,0], [14,14,8,2,2,1,1,2,2,8,14,14,0,0,0,0], [14,14,8,8,2,2,2,2,8,8,14,14,0,0,0,0], [0,14,14,14,8,8,8,8,14,14,14,0,0,0,0,0], [0,0,14,14,14,14,14,14,14,14,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], empty16(0), empty16(0)
+    ],
+    // NOUVEAU : MINERAI OBSIDIENNE
+    OBSIDIAN_ORE: [
+        [0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0], [0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0], [0,1,1,1,1,11,11,1,1,11,11,1,1,0,0,0], [1,1,1,1,1,11,11,1,1,11,11,1,1,1,0,0], [1,1,11,11,1,1,1,1,1,1,1,1,1,1,0,0], [0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0], empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0)
+    ].flat().slice(0, 16*16).reduce((acc, val, i) => { const row = Math.floor(i / 16); if (!acc[row]) acc[row] = []; acc[row].push(val); return acc; }, []),
+    // NOUVEAU : DRAGON (Boss)
+    DRAGON: [
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,1,6,1,0,0,0,0,1,6,1,0,0,0], [0,0,1,6,6,6,1,0,0,1,6,6,6,1,0,0], [0,1,6,6,7,6,6,1,1,6,6,7,6,6,1,0], [1,6,6,6,6,6,6,6,6,6,6,6,6,6,6,1], [1,6,6,6,6,6,6,6,6,6,6,6,6,6,6,1], [1,1,6,6,6,1,1,1,1,1,1,6,6,6,1,1], [0,1,1,6,6,1,0,0,0,0,1,6,6,1,1,0], [0,0,1,6,6,6,1,1,1,1,6,6,6,1,0,0], [0,0,1,6,6,6,6,6,6,6,6,6,6,1,0,0], [0,1,6,6,1,1,6,6,6,6,1,1,6,6,1,0], [1,6,6,1,0,0,1,1,1,1,0,0,1,6,6,1], [1,6,1,0,0,0,0,0,0,0,0,0,0,1,6,1], [1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1], empty16(0), empty16(0)
+    ],
+
     PLAYER_IDLE: [
         [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,1,6,6,1,0,0,0,0,0,0], [0,0,0,0,0,1,6,2,2,6,1,0,0,0,0,0], [0,0,0,0,1,6,2,2,2,2,6,1,0,0,0,0], [0,0,0,1,6,2,2,2,2,2,6,1,0,0,0,0], [0,0,0,1,3,3,1,1,1,1,3,1,0,0,0,0], [0,0,0,0,1,3,1,1,1,1,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,2,2,1,1,2,2,1,0,0,0,0], [0,0,0,1,2,2,1,1,1,1,2,2,1,0,0,0], [0,0,1,3,3,1,0,0,0,0,1,3,3,1,0,0], [0,0,1,3,3,1,0,0,0,0,1,3,3,1,0,0], [0,0,1,3,3,1,0,0,0,0,1,3,3,1,0,0], [0,0,3,1,1,3,0,0,0,0,3,1,1,3,0,0], [0,3,1,0,0,1,3,0,0,3,1,0,0,1,3,0]
     ],
     PLAYER_SWORD: [
         [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0], [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,1,6,6,1,0,0,0,0,0,0], [0,0,0,0,0,1,6,2,2,6,1,0,0,0,0,0], [0,0,0,0,1,6,2,2,2,2,6,1,0,0,0,0], [0,0,0,1,6,2,2,2,2,2,6,1,0,0,0,0], [0,0,0,1,3,3,1,1,1,1,3,1,0,0,0,0], [0,0,0,0,1,3,1,1,1,1,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,2,2,1,1,2,2,1,0,0,0,0], [0,0,0,1,2,2,1,1,1,1,2,2,1,0,0,0], [0,0,1,3,3,1,0,0,0,0,1,3,3,1,0,0]
     ],
-    // NOUVEAU : Joueur tirant à l'arc
     PLAYER_BOW: [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,1,6,6,1,0,0,0,0,0,0], [0,0,0,0,0,1,6,2,2,6,1,0,0,0,0,0], [0,0,0,0,1,6,2,2,2,2,6,1,0,0,0,0], [0,0,0,1,6,2,2,2,2,2,6,1,0,0,0,0], [0,0,0,1,3,3,1,1,1,1,3,1,0,0,0,0], [0,0,0,0,1,3,1,1,1,1,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,2,2,1,1,2,2,1,0,0,0,0], [0,0,0,1,2,2,1,1,1,1,2,2,1,0,0,0], [0,0,1,3,3,1,0,0,0,0,1,3,3,1,0,0]
     ],
-    // NOUVEAU : Flèche (8x8)
     ARROW: [[0,0,0,0,0,0,0,0],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[0,0,0,0,0,0,0,0]],
-    // NOUVEAU : Mur en pierre
     WALL: [
         [0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0], [0,1,5,5,5,5,5,5,5,5,5,5,1,0,0,0], [1,5,5,1,1,5,5,1,1,5,5,1,1,0,0,0], [1,5,5,1,1,5,5,1,1,5,5,1,1,0,0,0], [1,5,5,5,5,5,5,5,5,5,5,5,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0)
     ].flat().slice(0, 16*16).reduce((acc, val, i) => { const row = Math.floor(i / 16); if (!acc[row]) acc[row] = []; acc[row].push(val); return acc; }, []),
-    // NOUVEAU : Coffre
     CHEST: [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,3,7,3,3,7,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0)
     ].flat().slice(0, 16*16).reduce((acc, val, i) => { const row = Math.floor(i / 16); if (!acc[row]) acc[row] = []; acc[row].push(val); return acc; }, []),
-    
-    // NOUVEAU : Ogre (utilise 3 et 6)
     OGRE: [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,1,6,6,1,0,0,0,0,0,0], [0,0,0,0,0,1,3,6,6,3,1,0,0,0,0,0], [0,0,0,0,1,3,3,3,3,3,3,1,0,0,0,0], [0,0,0,1,3,3,3,3,3,3,3,3,1,0,0,0], [0,0,1,3,6,6,6,6,6,6,6,3,1,0,0,0], [0,1,3,6,1,1,6,6,1,1,6,3,1,0,0,0], [1,3,6,6,6,6,6,6,6,6,6,6,3,1,0,0], [1,3,6,6,6,6,6,6,6,6,6,6,3,1,0,0], [1,3,6,6,6,6,6,6,6,6,6,6,3,1,0,0], [1,3,6,6,6,6,6,6,6,6,6,6,3,1,0,0], [0,1,3,6,1,1,1,1,1,1,6,3,1,0,0,0], [0,0,1,3,3,1,1,0,0,1,3,3,1,0,0,0], [0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     ],
-    // NOUVEAU : Fantôme (utilise 2, 8, 14)
     GHOST: [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,14,14,14,14,14,0,0,0,0,0,0], [0,0,0,0,14,8,8,14,14,8,8,14,0,0,0,0], [0,0,0,14,8,8,8,8,8,8,8,8,14,0,0,0], [0,0,14,8,2,8,8,8,8,8,2,8,14,0,0,0], [0,14,8,8,8,8,8,8,8,8,8,8,8,14,0,0], [0,14,8,8,8,8,8,8,8,8,8,8,8,14,0,0], [0,14,8,8,8,8,8,8,8,8,8,8,8,14,0,0], [0,0,14,8,8,8,8,8,8,8,8,14,0,0,0,0], [0,0,0,14,8,8,8,8,8,8,14,0,0,0,0,0], [0,0,0,0,14,8,8,8,8,14,0,0,0,0,0,0], [0,0,0,0,0,14,14,14,14,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     ],
-    // Les autres assets restent ici pour la cohérence
     TREE: [
         [0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0], [0,0,0,0,0,4,4,4,4,4,4,0,0,0,0,0], [0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0], [0,0,0,4,4,4,12,12,12,12,4,4,4,0,0,0], [0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0], [0,4,4,4,4,12,4,4,4,4,12,4,4,4,4,0], [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4], [0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0]
     ],
-    // NOUVEAU : Arbre des marais
     TREE_SWAMP: [
         [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,13,13,13,13,0,0,0,0,0,0], [0,0,0,0,13,13,12,12,12,12,13,0,0,0,0,0], [0,0,13,13,12,12,12,12,12,12,12,13,0,0,0,0], [0,13,13,12,12,12,12,12,12,12,12,12,13,0,0,0], [1,13,12,12,12,12,12,12,12,12,12,12,13,1,0,0], [1,1,3,3,3,3,3,3,3,3,3,3,3,1,0,0], [1,1,3,3,3,3,3,3,3,3,3,3,3,1,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0]
     ],
-    // NOUVEAU : Arbre magique
     TREE_MAGIC: [
         [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,14,14,14,14,0,0,0,0,0,0], [0,0,0,0,14,14,14,14,14,14,14,0,0,0,0,0], [0,0,0,14,14,14,14,14,14,14,14,14,0,0,0,0], [0,0,14,14,14,14,14,14,14,14,14,14,14,0,0,0], [0,14,14,14,14,14,14,14,14,14,14,14,14,14,0,0], [14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,0], [0,14,14,14,14,14,14,14,14,14,14,14,14,14,14,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0]
     ],
@@ -395,7 +428,6 @@ const PIXEL_ASSETS = {
         [0,0,0,0,5,5,5,5,5,5,0,0,0,0,0,0], [0,0,5,5,5,5,5,5,5,5,5,5,0,0,0,0], [0,5,5,5,5,1,1,5,5,1,1,5,5,0,0,0], [5,5,5,5,5,1,1,5,5,1,1,5,5,5,0,0], [5,5,1,1,5,5,5,5,5,5,5,5,5,5,0,0], [0,5,5,5,5,5,5,5,5,5,5,5,0,0,0,0], [0,0,5,5,5,5,5,5,5,5,0,0,0,0,0,0], empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0), empty16(0)
     ].flat().slice(0, 16*16).reduce((acc, val, i) => { const row = Math.floor(i / 16); if (!acc[row]) acc[row] = []; acc[row].push(val); return acc; }, []),
     
-    // NOUVEAU : Golem de Pierre
     GOLEM: [
         [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0], [0,0,0,0,0,1,5,5,5,5,1,0,0,0,0,0], [0,0,0,0,1,5,5,5,5,5,5,1,0,0,0,0], [0,0,0,1,5,10,5,5,10,5,5,1,0,0,0], [0,0,1,5,5,5,5,5,5,5,5,5,1,0,0,0], [0,1,5,5,5,5,5,5,5,5,5,5,5,1,0,0], [1,5,5,5,5,5,5,5,5,5,5,5,5,5,1,0], [1,5,5,5,5,5,5,5,5,5,5,5,5,5,1,0], [1,5,5,5,5,5,5,5,5,5,5,5,5,5,1,0], [1,5,5,5,5,5,5,5,5,5,5,5,5,5,1,0], [1,5,5,5,5,5,5,5,5,5,5,5,5,5,1,0], [0,1,5,5,1,5,5,5,5,5,1,5,5,1,0,0], [0,0,1,5,1,5,5,5,5,5,1,5,1,0,0,0], [0,0,0,1,1,1,0,0,0,0,1,1,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     ],
@@ -432,8 +464,10 @@ const QUESTS = [
     { id: 8, txt: "Tuer 3 LOUPS", type: 'kill_wolf', target: 3 },
     { id: 9, txt: "Trouver 5 FER (Neige)", type: 'iron', target: 5 },
     { id: 10, txt: "Trouver le VOLCAN", type: 'explore_volcano', target: 1 },
-    { id: 11, txt: "Tuer le ROI DÉMON", type: 'kill_boss', target: 1 },
-    { id: 12, txt: "VOUS ÊTES LE MAÎTRE !", type: 'win', target: 0 }
+    { id: 11, txt: "Fabriquer un PORTAIL", type: 'craft_portal', target: 1 }, // NOUVELLE QUÊTE
+    { id: 12, txt: "Tuer le DRAGON", type: 'kill_dragon', target: 1 }, // NOUVELLE QUÊTE
+    { id: 13, txt: "Acheter SKIN ULTIME", type: 'buy_skin', target: 1 }, // NOUVELLE QUÊTE
+    { id: 14, txt: "VOUS ÊTES LE MAÎTRE !", type: 'win', target: 0 }
 ]; 
 
 const canvas = document.getElementById('gameCanvas');
@@ -447,32 +481,33 @@ let keys = {};
 let isMenuOpen = false;
 let isMinimapOpen = false;
 let isControlsOpen = false;
-let isSkillsOpen = false; // NOUVEAU : Menu Compétences
+let isSkillsOpen = false; 
 
 let game = { 
     player: { 
         x: 15000, y: 15000, 
         hp: 100, maxHp: 100, 
-        baseSpeed: 4, // NOUVEAU : Vitesse de base séparée
+        baseSpeed: 4, 
         speed: 4, 
         size: 24, angle: 0, iframes: 0, 
-        xp: 0, lvl: 1, xpToNextLvl: 100, // NOUVEAU : XP/Niveau
-        skillPoints: 0, // NOUVEAU : Points de Compétence
-        skills: { str: 1, spd: 1, harvest: 1, hp: 1 } // NOUVEAU : Stats de Compétence
+        xp: 0, lvl: 1, xpToNextLvl: 100, 
+        skillPoints: 0, 
+        skills: { str: 1, spd: 1, harvest: 1, hp: 1 },
+        hasSkin: false // NOUVEAU
     }, 
     inv: { 
-        wood:0, stone:0, gold:0, iron:0, ruby:0, 
+        wood:0, stone:0, gold:0, iron:0, ruby:0, obsidian:0, // NOUVEAU : Obsidienne
         axe:1, pick:1, sword:1, armor:0, boots:0, 
-        shield: 0, bow: 0, arrows: 0, heal_potion: 0 // NOUVEAUX objets
+        shield: 0, bow: 0, arrows: 0, heal_potion: 0 
     }, 
     house: { active: false, x: 0, y: 0, lvl: 0, cooldown: 0 }, 
     quest: { id: 0, progress: 0 }, 
     dayTime: 0, 
-    weather: 'CLEAR', // NOUVEAU : Météo (CLEAR, RAIN, SNOW, STORM)
-    weatherTimer: 0, // NOUVEAU : Timer pour la météo
+    weather: 'CLEAR', 
+    weatherTimer: 0, 
     camera: { x:0, y:0 }, 
     objects: [], 
-    projectiles: [], // NOUVEAU : Projectiles (Flèches)
+    projectiles: [], 
     particles: [] 
 };
 
@@ -480,20 +515,16 @@ function init() {
     resize();
     generateObjects();
     setupInputs();
-    updatePlayerStats(); // Initialiser la vitesse et la vie avec les compétences de base
+    updatePlayerStats(); 
     requestAnimationFrame(loop);
 }
 
-// Nouvelle fonction pour mettre à jour les statistiques du joueur basées sur les compétences
 function updatePlayerStats() {
-    // La vitesse totale est la vitesse de base (4) + Bottes (+0/1/2/3/5) + Compétence Vitesse (+1 par niveau)
     let bootsBonus = (game.inv.boots === 4) ? 5 : game.inv.boots;
     game.player.speed = game.player.baseSpeed + bootsBonus + (game.player.skills.spd - 1); 
-
     let hpBonus = (game.inv.armor * 100) + (game.player.skills.hp - 1) * 50;
     let oldMaxHp = game.player.maxHp;
     game.player.maxHp = 100 + hpBonus;
-    // Si la vie max augmente, on soigne proportionnellement
     if(game.player.maxHp > oldMaxHp) {
         game.player.hp += (game.player.maxHp - oldMaxHp);
     }
@@ -509,11 +540,9 @@ function generateObjects() {
             let y = Math.random() * WORLD_H;
             let b = getBiomeAt(x, y);
             
-            // Éviter la forêt initiale pour les mobs et minerais non forestiers
             if(b === 'FOREST' && (type!=='tree' && type!=='stone' && type!=='slime')) continue; 
             if(b !== 'FOREST' && (type === 'tree' || type === 'stone')) continue; 
             
-            // Assurer que le type correspond au biome si requis (mobs/minerais)
             if(isOre && (b !== 'DESERT' && b !== 'SNOW' && b !== 'VOLCANO' && b !== 'MAGIC')) continue;
             if((type === 'scorpion' && b !== 'DESERT') || (type === 'wolf' && b !== 'SNOW') || (type === 'demon' && b !== 'VOLCANO') || (type === 'ogre' && b !== 'SWAMP') || (type === 'ghost' && b !== 'MAGIC')) continue;
 
@@ -521,12 +550,11 @@ function generateObjects() {
         }
     };
     
-    // Remplissage initial de la forêt de départ
+    // Remplissage initial
     for(let i=0; i<2500; i++) { let x = Math.random() * SAFE_FOREST_SIZE; let y = Math.random() * SAFE_FOREST_SIZE; createObject('tree', x, y); }
     for(let i=0; i<800; i++) { let x = Math.random() * SAFE_FOREST_SIZE; let y = Math.random() * SAFE_FOREST_SIZE; createObject('stone', x, y); }
     for(let i=0; i<200; i++) { let x = Math.random() * SAFE_FOREST_SIZE; let y = Math.random() * SAFE_FOREST_SIZE; createObject('slime', x, y); }
 
-    // Ajout des nouvelles populations/biomes
     spawnRandomly('tree_swamp', 1500, 'SWAMP');
     spawnRandomly('tree_magic', 1000, 'MAGIC');
     spawnRandomly('gold_rock', 1500, 'DESERT');
@@ -535,38 +563,67 @@ function generateObjects() {
     spawnRandomly('scorpion', 800, 'DESERT');
     spawnRandomly('wolf', 800, 'SNOW');
     spawnRandomly('demon', 600, 'VOLCANO');
-    spawnRandomly('ogre', 600, 'SWAMP'); // NOUVEAU
-    spawnRandomly('golem', 300, 'SWAMP'); // NOUVEAU
-    spawnRandomly('ghost', 500, 'MAGIC'); // NOUVEAU
+    spawnRandomly('ogre', 600, 'SWAMP'); 
+    spawnRandomly('golem', 300, 'SWAMP'); 
+    spawnRandomly('ghost', 500, 'MAGIC'); 
 
-    // BOSS
+    // ANCIEN BOSS (RESTE SUR LA CARTE NORMALE)
     createObject('boss', 98000, 98000);
     for(let a=0; a<Math.PI*2; a+=0.5) createObject('wall', 98000+Math.cos(a)*400, 98000+Math.sin(a)*400);
+
+    // === GENERATION DE LA GROTTE (LOIN) ===
+    // Spawn du Dragon
+    createObject('dragon', CAVE_OFFSET_X + CAVE_SIZE/2, CAVE_OFFSET_Y + CAVE_SIZE/2);
+    
+    // Spawn de l'Obsidienne dans la grotte
+    for(let i=0; i<100; i++) {
+        let ox = CAVE_OFFSET_X + Math.random() * CAVE_SIZE;
+        let oy = CAVE_OFFSET_Y + Math.random() * CAVE_SIZE;
+        createObject('obsidian_ore', ox, oy);
+    }
 }
 
 function createObject(type, x, y) {
-    let o = { type, x, y, hp:1, maxHp:1, size:40, asset:'STONE', solid:false, hostile:false, speed: 0, dmg: 0, xp: 0 }; // Ajout XP
+    let o = { type, x, y, hp:1, maxHp:1, size:40, asset:'STONE', solid:false, hostile:false, speed: 0, dmg: 0, xp: 0 };
+    
+    // CLASSIQUES
     if(type==='tree' || type==='tree_swamp' || type==='tree_magic') { o.asset=(type==='tree')?'TREE':(type==='tree_swamp'?'TREE_SWAMP':'TREE_MAGIC'); o.hp=15; o.maxHp=15; o.size=50; o.xp=2; }
     if(type==='stone') { o.asset='STONE'; o.hp=25; o.maxHp=25; o.size=40; o.xp=3; }
     if(type==='gold_rock') { o.asset='ROCK_GOLD'; o.hp=40; o.maxHp=40; o.size=35; o.xp=5; }
     if(type==='iron_rock') { o.asset='IRON_ROCK'; o.hp=50; o.maxHp=50; o.size=35; o.xp=8; }
     if(type==='ruby') { o.asset='RUBY'; o.hp=60; o.maxHp=60; o.size=30; o.xp=10; }
+    
+    // NOUVEAU: OBSIDIENNE
+    if(type==='obsidian_ore') { o.asset='OBSIDIAN_ORE'; o.hp=100; o.maxHp=100; o.size=35; o.xp=25; }
+
+    // MOBS
     if(type==='slime') { o.asset='SLIME'; o.hp=30; o.maxHp=30; o.hostile=true; o.speed=2; o.dmg=5; o.size=30; o.xp=10; }
     if(type==='scorpion') { o.asset='SCORPION'; o.hp=60; o.maxHp=60; o.hostile=true; o.speed=4; o.dmg=10; o.size=25; o.xp=20; }
     if(type==='wolf') { o.asset='WOLF'; o.hp=100; o.maxHp=100; o.hostile=true; o.speed=5; o.dmg=15; o.size=35; o.xp=30; }
     if(type==='demon') { o.asset='DEMON'; o.hp=150; o.maxHp=150; o.hostile=true; o.speed=3.5; o.dmg=25; o.size=35; o.xp=50; }
-    if(type==='ogre') { o.asset='OGRE'; o.hp=200; o.maxHp=200; o.hostile=true; o.speed=3; o.dmg=30; o.size=40; o.xp=60; } // NOUVEAU
-    if(type==='golem') { o.asset='GOLEM'; o.hp=300; o.maxHp=300; o.hostile=true; o.speed=2; o.dmg=40; o.size=45; o.xp=80; } // NOUVEAU
-    if(type==='ghost') { o.asset='GHOST'; o.hp=120; o.maxHp=120; o.hostile=true; o.speed=5.5; o.dmg=20; o.size=30; o.xp=40; o.nightOnly=true; } // NOUVEAU
+    if(type==='ogre') { o.asset='OGRE'; o.hp=200; o.maxHp=200; o.hostile=true; o.speed=3; o.dmg=30; o.size=40; o.xp=60; }
+    if(type==='golem') { o.asset='GOLEM'; o.hp=300; o.maxHp=300; o.hostile=true; o.speed=2; o.dmg=40; o.size=45; o.xp=80; }
+    if(type==='ghost') { o.asset='GHOST'; o.hp=120; o.maxHp=120; o.hostile=true; o.speed=5.5; o.dmg=20; o.size=30; o.xp=40; o.nightOnly=true; }
+    
+    // BOSSES
     if(type==='boss') { o.asset='BOSS'; o.hp=1000; o.maxHp=1000; o.hostile=true; o.speed=4.5; o.dmg=40; o.size=80; o.isBoss=true; o.xp=500; }
-    if(type==='wall') { o.asset='WALL'; o.hp=500; o.maxHp=500; o.solid=true; o.size=40; } // MISE À JOUR (HP destructible)
-    if(type==='chest') { o.asset='CHEST'; o.hp=100; o.maxHp=100; o.solid=true; o.size=30; } // NOUVEAU
+    
+    // NOUVEAU BOSS: DRAGON
+    if(type==='dragon') { o.asset='DRAGON'; o.hp=3000; o.maxHp=3000; o.hostile=true; o.speed=5.0; o.dmg=60; o.size=100; o.isBoss=true; o.xp=2000; }
+
+    // BUILDINGS
+    if(type==='wall') { o.asset='WALL'; o.hp=500; o.maxHp=500; o.solid=true; o.size=40; }
+    if(type==='chest') { o.asset='CHEST'; o.hp=100; o.maxHp=100; o.solid=true; o.size=30; }
+    
+    // NOUVEAU: PORTAIL
+    if(type==='portal') { o.asset='PORTAL'; o.hp=1000; o.maxHp=1000; o.solid=true; o.size=40; }
+
     game.objects.push(o);
 }
 
 function loop(time) {
     if(!isGameRunning) return;
-    let dt = (time - lastTime) / 1000; lastTime = time; // dt en secondes
+    let dt = (time - lastTime) / 1000; lastTime = time; 
     update(dt);
     draw();
     if(isMinimapOpen) drawMinimap();
@@ -576,7 +633,6 @@ function loop(time) {
 }
 
 function update(dt) {
-    // 1. Mouvement du Joueur
     let dx = 0, dy = 0;
     if (keys['KeyW'] || keys['KeyZ'] || keys['ArrowUp']) dy = -1;
     if (keys['KeyS'] || keys['ArrowDown']) dy = 1;
@@ -586,37 +642,39 @@ function update(dt) {
     if (dx !== 0 || dy !== 0) {
         let length = Math.sqrt(dx*dx + dy*dy); dx /= length; dy /= length;
         game.player.angle = Math.atan2(dy, dx);
-        let moveDist = game.player.speed * dt * 60; // 60 FPS pour la vitesse de base
+        let moveDist = game.player.speed * dt * 60; 
         let nx = game.player.x + dx * moveDist;
         let ny = game.player.y + dy * moveDist;
-        nx = Math.max(0, Math.min(WORLD_W, nx));
-        ny = Math.max(0, Math.min(WORLD_H, ny));
+        
+        // La collision bord de map est un peu différente avec la Grotte distante
+        if (nx < 0) nx = 0; 
+        // On laisse nx/ny aller très loin pour la grotte
+
         let collide = game.objects.some(o => o.solid && o.hp > 0 && Math.hypot(nx-o.x, ny-o.y) < game.player.size + o.size/2);
         if(!collide) { game.player.x = nx; game.player.y = ny; }
     }
 
-    // 2. Mouvement/Combat des Objets (Mobs)
     if(game.player.iframes > 0) game.player.iframes--;
     game.objects.forEach(o => {
         if(o.hostile && o.hp > 0) {
-            // FANTÔMES (nightOnly) : Ne se déplacent/attaquent que la nuit
             const isNight = game.dayTime > 0.7 || game.dayTime < 0.2;
             if(o.nightOnly && !isNight) return;
 
+            // Distance d'aggro (Dragon a une vue perçante)
+            let aggroDist = o.type === 'dragon' ? 800 : 400;
+
             let dist = Math.hypot(game.player.x - o.x, game.player.y - o.y);
-            if(dist < 400) { 
+            if(dist < aggroDist) { 
                 let mobMoveDist = o.speed * dt * 60;
                 o.x += (game.player.x - o.x) / dist * mobMoveDist;
                 o.y += (game.player.y - o.y) / dist * mobMoveDist;
                 
                 if(dist < game.player.size + o.size/2 && game.player.iframes <= 0) {
                     let finalDmg = o.dmg;
-                    // NOUVEAU : Calcul des dégâts avec bouclier
-                    if(game.inv.shield > 0 && Math.random() < game.inv.shield * 0.1) { // 10% par niveau de bouclier de bloquer
+                    if(game.inv.shield > 0 && Math.random() < game.inv.shield * 0.1) { 
                         createFloatText("🛡️ BLOCK", game.player.x, game.player.y-20, '#3498db');
-                        finalDmg = Math.floor(finalDmg * 0.5); // Réduction de 50%
+                        finalDmg = Math.floor(finalDmg * 0.5); 
                     }
-                    
                     game.player.hp -= finalDmg;
                     game.player.iframes = 40;
                     createFloatText(`-${finalDmg}`, game.player.x, game.player.y, 'red');
@@ -625,11 +683,9 @@ function update(dt) {
         }
     });
 
-    // 3. Mise à jour de la Caméra
     game.camera.x = game.player.x - canvas.width/2;
     game.camera.y = game.player.y - canvas.height/2;
     
-    // 4. Régénération de la Base
     if(game.house.active) {
         let dist = Math.hypot(game.player.x - game.house.x, game.house.y - game.house.y);
         if(dist < 150) {
@@ -642,7 +698,6 @@ function update(dt) {
         }
     }
     
-    // 5. Mouvement des Projectiles
     for(let i=game.projectiles.length-1; i>=0; i--) {
         let p = game.projectiles[i];
         p.x += Math.cos(p.angle) * p.speed * dt * 60;
@@ -661,16 +716,14 @@ function update(dt) {
         }
     }
 
-    // 6. Jour/Nuit et Météo
     game.dayTime += 0.0002 * dt * 60; if(game.dayTime > 1) game.dayTime = 0;
     
     game.weatherTimer += dt;
-    if(game.weatherTimer > 30) { // Changement de météo toutes les 30 secondes (pour l'exemple)
+    if(game.weatherTimer > 30) { 
         const possibleWeather = ['CLEAR', 'CLEAR', 'RAIN', 'SNOW', 'STORM'];
         game.weather = possibleWeather[Math.floor(Math.random() * possibleWeather.length)];
         game.weatherTimer = 0;
     }
-    // Mise à jour de l'overlay météo
     let weatherOverlay = document.getElementById('weather-overlay');
     if(game.weather === 'RAIN') { weatherOverlay.style.background = 'rgba(0,0,100,0.1)'; }
     else if(game.weather === 'SNOW') { weatherOverlay.style.background = 'rgba(255,255,255,0.1)'; }
@@ -678,7 +731,6 @@ function update(dt) {
     else { weatherOverlay.style.background = 'rgba(255,255,255,0)'; }
     
     
-    // 7. Quêtes
     let currentBiome = getBiomeAt(game.player.x, game.player.y);
     if(currentBiome === 'DESERT') checkQuest('explore_desert', 1);
     if(currentBiome === 'SNOW') checkQuest('explore_snow', 1);
@@ -706,7 +758,6 @@ function drawPixelArt(assetName, x, y, scale = SCALE_BASE) {
 function draw() {
     ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
     
-    // 1. Dessin du fond et des biomes
     let startX = Math.floor(game.camera.x / 1000) * 1000;
     let startY = Math.floor(game.camera.y / 1000) * 1000;
     let endX = startX + canvas.width + 1000;
@@ -714,18 +765,20 @@ function draw() {
     for(let y=startY; y<endY; y+=1000) {
         for(let x=startX; x<endX; x+=1000) {
             let biome = getBiomeAt(x, y);
-            ctx.fillStyle = BIOME_TYPES[biome].ground;
+            if(biome === 'CAVE') {
+                 ctx.fillStyle = '#2c3e50'; // Sol sombre pour la grotte
+            } else {
+                 ctx.fillStyle = BIOME_TYPES[biome].ground;
+            }
             ctx.fillRect(x - game.camera.x, y - game.camera.y, 1000, 1000);
         }
     }
     
-    // 2. Dessin des objets
     game.objects.sort((a,b) => a.y - b.y);
     for(let o of game.objects) {
         if(o.x + o.size < game.camera.x || o.x - o.size > game.camera.x + canvas.width || 
            o.y + o.size < game.camera.y || o.y - o.size > game.camera.y + canvas.height) continue;
         
-        // FANTÔMES : Cachés le jour
         const isNight = game.dayTime > 0.7 || game.dayTime < 0.2;
         if(o.nightOnly && !isNight) continue;
 
@@ -740,16 +793,13 @@ function draw() {
         }
     }
     
-    // 3. Dessin de la Base
     if(game.house.active) { 
         let hAsset = (game.house.lvl == 1) ? 'HOUSE_LVL1' : 'HOUSE_LVL2'; 
         drawPixelArt(hAsset, game.house.x, game.house.y, SCALE_BASE * 1); 
     }
     
-    // 4. Dessin des Projectiles
     for(let p of game.projectiles) {
         ctx.fillStyle = 'white';
-        // Simplification pour la flèche: un petit rectangle
         ctx.save();
         ctx.translate(p.x - game.camera.x, p.y - game.camera.y);
         ctx.rotate(p.angle);
@@ -757,21 +807,26 @@ function draw() {
         ctx.restore();
     }
     
-    // 5. Dessin du Joueur
     if(game.player.iframes % 4 < 2) { 
-        let pAsset = (game.inv.sword > 1) ? 'PLAYER_SWORD' : 'PLAYER_IDLE'; 
-        if(game.player.isShooting) pAsset = 'PLAYER_BOW'; // NOUVEAU: Animation de l'arc
-        // Le joueur est dessiné à 1.5x l'échelle 16x16
+        // GESTION DU SKIN DU JOUEUR
+        let pAsset;
+        if(game.player.hasSkin) {
+            pAsset = 'PLAYER_SKIN';
+        } else {
+            pAsset = (game.inv.sword > 1) ? 'PLAYER_SWORD' : 'PLAYER_IDLE'; 
+        }
+        if(game.player.isShooting) pAsset = 'PLAYER_BOW'; 
         drawPixelArt(pAsset, game.player.x, game.player.y, SCALE_BASE * 1.5); 
     }
-    game.player.isShooting = false; // Réinitialiser l'animation de tir
+    game.player.isShooting = false; 
 
-    // 6. Jour/Nuit
     let darkness = 0; 
     if(game.dayTime > 0.7 || game.dayTime < 0.2) darkness = 0.6; 
+    // Pas de nuit dans la grotte (toujours sombre)
+    if(getBiomeAt(game.player.x, game.player.y) === 'CAVE') darkness = 0;
+
     document.getElementById('night-overlay').style.opacity = darkness;
     
-    // 7. Particules / Texte Flottant
     for(let i=game.particles.length-1; i>=0; i--) {
         let p = game.particles[i]; 
         p.y -= 1; p.life--;
@@ -787,6 +842,17 @@ function draw() {
 
 function drawMinimap() {
     ctxMini.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+    
+    // Si on est dans la grotte, la minimap est différente
+    if(getBiomeAt(game.player.x, game.player.y) === 'CAVE') {
+        ctxMini.fillStyle = "#2c3e50";
+        ctxMini.fillRect(0,0,200,200);
+        ctxMini.fillStyle = "white";
+        ctxMini.font = "12px Arial";
+        ctxMini.fillText("GROTTE DU DRAGON", 40, 100);
+        return;
+    }
+
     const scale = minimapCanvas.width / WORLD_W;
     const step = 2500; 
     for(let y=0; y<WORLD_H; y+=step) {
@@ -810,7 +876,7 @@ function handleAction(isRanged = false) {
                 y: game.player.y + Math.sin(game.player.angle) * 10,
                 angle: game.player.angle,
                 speed: 15,
-                dmg: game.inv.bow * 10 + (game.player.skills.str - 1) * 5, // Dégâts basés sur l'arc et la force
+                dmg: game.inv.bow * 10 + (game.player.skills.str - 1) * 5, 
                 life: 60
             };
             game.projectiles.push(p);
@@ -823,26 +889,36 @@ function handleAction(isRanged = false) {
     let t = getNearestTarget();
     if(!t) return;
     
+    // INTERACTION AVEC LE PORTAIL
+    if(t.type === 'portal') {
+        createFloatText("🌀 TÉLÉPORTATION...", game.player.x, game.player.y, '#9b59b6');
+        setTimeout(() => {
+            game.player.x = CAVE_OFFSET_X + 100;
+            game.player.y = CAVE_OFFSET_Y + 100;
+            createFloatText("BIENVENUE EN ENFER", game.player.x, game.player.y, '#c0392b');
+        }, 1000);
+        return;
+    }
+
     let dmg = 1;
     let baseDmg = 1;
     if(t.hostile) baseDmg = game.inv.sword * 6;
     else if(t.type.includes('tree')) baseDmg = game.inv.axe * 3;
     else baseDmg = game.inv.pick * 3;
 
-    dmg = baseDmg + (game.player.skills.str - 1) * 2; // Ajout de la force de la compétence
+    dmg = baseDmg + (game.player.skills.str - 1) * 2; 
     
     t.hp -= dmg; 
     createFloatText("💥", t.x, t.y, '#fff');
     if(t.hp <= 0) { handleDeath(t); }
     
-    // NOUVEAU: Les murs et coffres sont destructibles
     if(t.type === 'wall' || t.type === 'chest') {
         if(t.hp <= 0) game.objects.splice(game.objects.indexOf(t), 1);
     }
 }
 
 function handleDeath(t) {
-    game.player.xp += t.xp; // Gain d'XP
+    game.player.xp += t.xp; 
     checkLevelUp();
 
     if(t.type.includes('tree')) { 
@@ -860,8 +936,21 @@ function handleDeath(t) {
     if(t.type === 'ruby') { 
         game.inv.ruby += 1 * game.player.skills.harvest; createFloatText(`+${1 * game.player.skills.harvest} RUBIS`, t.x, t.y, '#e91e63'); 
     }
+    
+    // NOUVEAU : DROP OBSIDIENNE
+    if(t.type === 'obsidian_ore') {
+        game.inv.obsidian += 1 * game.player.skills.harvest; createFloatText(`+${1 * game.player.skills.harvest} OBSIDIENNE`, t.x, t.y, '#8e44ad');
+    }
+
     if(t.type === 'wolf') checkQuest('kill_wolf', 1);
     if(t.type === 'boss') checkQuest('kill_boss', 1);
+    
+    // NOUVEAU : DROP DRAGON
+    if(t.type === 'dragon') {
+        checkQuest('kill_dragon', 1);
+        game.inv.obsidian += 10;
+        createFloatText("+10 OBSIDIENNES (BOSS)", t.x, t.y, '#8e44ad');
+    }
     
     game.objects.splice(game.objects.indexOf(t), 1);
 }
@@ -891,7 +980,6 @@ function checkQuest(type, amount) {
     if(q.type === type) { game.quest.progress += amount; if(game.quest.progress >= q.target) { createFloatText("🏆 QUÊTE FINIE !", game.player.x, game.player.y - 50, 'gold'); game.quest.id++; game.quest.progress = 0; } }
 }
 
-// NOUVELLE FONCTION pour améliorer les compétences
 game.upgradeSkill = function(skill) {
     if(game.player.skillPoints > 0) {
         if(skill === 'str') game.player.skills.str++;
@@ -911,6 +999,34 @@ game.craft = function(item) {
     let canCraft = false;
     let baseX = game.player.x + 50 * Math.cos(game.player.angle);
     let baseY = game.player.y + 50 * Math.sin(game.player.angle);
+
+    // NOUVEAU: PORTAIL
+    if(item === 'portal') {
+        if(game.inv.ruby >= 50) {
+            game.inv.ruby -= 50;
+            createObject('portal', baseX, baseY);
+            msg = "PORTAIL CRÉÉ ! (CLIC POUR ENTRER)";
+            checkQuest('craft_portal', 1);
+        } else {
+            msg = "Pas assez de Rubis (50)";
+        }
+    }
+    
+    // NOUVEAU: SKIN
+    if(item === 'skin') {
+        if(game.inv.obsidian >= 20) {
+            if(!game.player.hasSkin) {
+                game.inv.obsidian -= 20;
+                game.player.hasSkin = true;
+                msg = "SKIN ÉQUIPÉ !";
+                checkQuest('buy_skin', 1);
+            } else {
+                msg = "DÉJÀ POSSÉDÉ";
+            }
+        } else {
+            msg = "Pas assez d'Obsidienne (20)";
+        }
+    }
 
     // MAISON
     if(item === 'house') {
@@ -949,7 +1065,7 @@ game.craft = function(item) {
             if(canCraft) { game.inv.boots++; updatePlayerStats(); msg = "VITESSE UP !"; }
         }
     }
-    // NOUVEAU: BOUCLIER
+    // BOUCLIER
     if(item === 'shield') {
         let costs = [{s:20, w:10}, {s:50, i:5}, {s:100, r:3}];
         if(game.inv.shield < 3) {
@@ -964,7 +1080,7 @@ game.craft = function(item) {
             }
         }
     }
-    // NOUVEAU: ARC + FLÈCHES
+    // ARC + FLÈCHES
     if(item === 'bow') {
         let costs = [{w:30, s:10, a:10}, {w:50, g:10, a:20}, {i:20, g:20, a:50}];
         if(game.inv.bow < 3) {
@@ -981,14 +1097,14 @@ game.craft = function(item) {
             }
         }
     }
-    // NOUVEAU: POTION DE SOIN
+    // POTION DE SOIN
     if(item === 'heal_potion') {
         if(game.inv.wood >= 5 && game.inv.gold >= 5) {
             game.inv.wood -= 5; game.inv.gold -= 5; game.inv.heal_potion++;
             msg = "POTION CRAFTÉE";
         }
     }
-    // NOUVEAU: MURS
+    // MURS
     if(item === 'wall') {
         if(game.inv.stone >= 10) {
             game.inv.stone -= 10;
@@ -996,7 +1112,7 @@ game.craft = function(item) {
             msg = "MUR POSÉ";
         }
     }
-    // NOUVEAU: COFFRES
+    // COFFRES
     if(item === 'chest') {
         if(game.inv.wood >= 20 && game.inv.iron >= 5) {
             game.inv.wood -= 20; game.inv.iron -= 5;
@@ -1005,7 +1121,7 @@ game.craft = function(item) {
         }
     }
 
-    // OUTILS EXISTANTS (Ajout des coûts et des vérifications)
+    // OUTILS EXISTANTS
     if(item === 'axe' && game.inv.wood >= game.inv.axe*20) { 
         game.inv.wood -= game.inv.axe*20; game.inv.axe++; checkQuest('axe', 1); msg="HACHE UP !"; 
     }
@@ -1038,6 +1154,7 @@ function updateUI() {
     document.getElementById('hud-gold').innerText = game.inv.gold;
     document.getElementById('hud-iron').innerText = game.inv.iron;
     document.getElementById('hud-ruby').innerText = game.inv.ruby;
+    document.getElementById('hud-obsidian').innerText = game.inv.obsidian;
 
     // HUD XP/Niveau
     document.getElementById('hud-lvl').innerText = game.player.lvl;
@@ -1061,6 +1178,11 @@ function updateUI() {
     } else {
         document.querySelectorAll('#skills-menu .skill-btn').forEach(btn => btn.disabled = false);
     }
+
+    // BOUTONS NOUVEAUX (PORTAIL / SKIN)
+    document.getElementById('btn-portal').disabled = (game.inv.ruby < 50);
+    document.getElementById('btn-skin').disabled = (game.inv.obsidian < 20) || game.player.hasSkin;
+    if(game.player.hasSkin) document.getElementById('btn-skin').innerText = "POSSÉDÉ";
 
 
     // Menu Artisanat - Maison
@@ -1135,7 +1257,7 @@ function toggleControls(state) {
     isControlsOpen = (state!==undefined) ? state : !isControlsOpen; 
     document.getElementById('controls-menu').style.display = isControlsOpen ? 'block' : 'none'; 
 }
-function toggleSkills(state) { // NOUVELLE FONCTION
+function toggleSkills(state) { 
     if (isMenuOpen) toggleMenu(false);
     if (isControlsOpen) toggleControls(false);
     isSkillsOpen = (state!==undefined) ? state : !isSkillsOpen;
@@ -1150,17 +1272,17 @@ function setupInputs() {
         if (e.code === 'Tab') { e.preventDefault(); toggleMenu(); }
         if (e.code === 'CapsLock') { e.preventDefault(); toggleMinimap(); }
         if (e.code === 'Backquote' || e.key === '²' || e.key === 'Escape') { e.preventDefault(); toggleControls(); toggleMenu(false); toggleSkills(false); }
-        if (e.code === 'KeyC') { e.preventDefault(); toggleSkills(); } // NOUVEAU: Touche C pour Compétences
-        if (e.code === 'KeyP') { e.preventDefault(); useItem('heal_potion'); } // NOUVEAU: Touche P pour Potion
+        if (e.code === 'KeyC') { e.preventDefault(); toggleSkills(); } 
+        if (e.code === 'KeyP') { e.preventDefault(); useItem('heal_potion'); } 
         keys[e.code] = true;
     });
     window.addEventListener('keyup', e => keys[e.code] = false);
     canvas.addEventListener('mousedown', e => { 
         if (isMenuOpen || isControlsOpen || isSkillsOpen) return;
-        if (e.button === 0) handleAction(false); // Clic Gauche : Mêlée
-        if (e.button === 2) handleAction(true); // Clic Droit : Arc
+        if (e.button === 0) handleAction(false); 
+        if (e.button === 2) handleAction(true); 
     });
-    canvas.addEventListener('contextmenu', e => e.preventDefault()); // Empêche le menu contextuel du clic droit
+    canvas.addEventListener('contextmenu', e => e.preventDefault()); 
 }
 
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
