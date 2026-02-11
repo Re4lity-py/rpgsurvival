@@ -3,117 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamble Elite - Roulette Animée</title>
+    <title>Véritable Roulette Casino</title>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { background-color: #1a1a1a; color: white; font-family: sans-serif; text-align: center; }
+        .casino-container { margin-top: 30px; position: relative; display: inline-block; }
         
-        /* Style de la Roue */
-        .roulette-container { position: relative; width: 200px; height: 200px; margin: 20px auto; }
-        #wheel { 
-            width: 100%; height: 100%; border-radius: 50%; border: 8px solid #fbbf24;
-            background: conic-gradient(#ef4444 0% 48%, #10b981 48% 52%, #1e293b 52% 100%);
-            transition: transform 4s cubic-bezier(0.1, 0, 0.1, 1);
-            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2rem;
-        }
-        .pointer { 
-            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
-            border-top: 25px solid #fbbf24; z-index: 10;
+        /* Le Canvas pour la roue */
+        #wheelCanvas { border: 10px solid #555; border-radius: 50%; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+
+        /* Le curseur (flèche) */
+        .arrow {
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent;
+            border-top: 40px solid #D4AF37; z-index: 10;
         }
 
-        .card { 
-            background: #064e3b; border-radius: 20px; padding: 25px; width: 350px; 
-            text-align: center; border: 2px solid #fbbf24; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .input-group { margin: 15px 0; display: flex; justify-content: space-between; align-items: center; }
-        input { background: #022c22; border: 1px solid #fbbf24; color: white; padding: 8px; border-radius: 5px; width: 70px; text-align: center; }
-        
-        .btn { 
-            background: #fbbf24; color: #000; border: none; padding: 15px; border-radius: 10px; 
-            font-weight: bold; cursor: pointer; width: 100%; font-size: 1.1rem; 
-        }
-        .btn:disabled { background: #71717a; cursor: not-allowed; }
-        
-        .result { margin-top: 20px; font-size: 1.2rem; min-height: 60px; }
-        .win { color: #4ade80; animation: flash 0.5s infinite; }
-        .lose { color: #f87171; }
-        @keyframes flash { 50% { opacity: 0.5; } }
+        .controls { background: #064E3B; padding: 20px; border-radius: 15px; margin-top: 20px; display: inline-block; border: 2px solid #D4AF37; }
+        .btn { background: #D4AF37; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; border-radius: 5px; font-size: 1.2rem; }
+        .btn:disabled { background: #777; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 60px; text-align: center; font-weight: bold; }
+        #resultat { font-size: 1.5rem; margin-top: 15px; color: #D4AF37; height: 40px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>🎰 ROULETTE PRO</h2>
-        
-        <div class="roulette-container">
-            <div class="pointer"></div>
-            <div id="wheel">?</div>
-        </div>
+    <h1>CASINO ROYALE</h1>
 
-        <div style="font-weight: bold; margin-bottom: 15px;">Solde : <span id="balance">1000</span> $</div>
+    <div class="casino-container">
+        <div class="arrow"></div>
+        <canvas id="wheelCanvas" width="400" height="400"></canvas>
+    </div>
 
-        <div class="input-group">
-            <label>Votre Numéro (0-36) :</label>
-            <input type="number" id="chosenNum" value="7" min="0" max="36">
-        </div>
+    <br>
 
-        <div class="input-group">
-            <label>Mise ($) :</label>
-            <input type="number" id="betAmount" value="10" min="1">
-        </div>
-
-        <button class="btn" id="spinBtn" onclick="spin()">LANCER LA ROUE</button>
-
-        <div id="status" class="result">Choisissez un numéro et pariez !</div>
+    <div class="controls">
+        <div style="margin-bottom: 10px;">Solde : <span id="balance">1000</span> $</div>
+        Mise : <input type="number" id="bet" value="10"> | 
+        Numéro : <input type="number" id="numTarget" value="7" min="0" max="36">
+        <br><br>
+        <button class="btn" id="spinBtn" onclick="lancerRoulette()">FAITES VOS JEUX !</button>
+        <div id="resultat"></div>
     </div>
 
     <script>
+        const canvas = document.getElementById("wheelCanvas");
+        const ctx = canvas.getContext("2d");
+        const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+        const colors = numbers.map((n, i) => n === 0 ? "#008000" : (i % 2 === 0 ? "#000000" : "#FF0000"));
+        
+        let angleActuel = 0;
         let balance = 1000;
-        let currentRotation = 0;
 
-        function spin() {
-            const bet = parseInt(document.getElementById('betAmount').value);
-            const chosen = parseInt(document.getElementById('chosenNum').value);
-            const wheel = document.getElementById('wheel');
-            const btn = document.getElementById('spinBtn');
-            const status = document.getElementById('status');
+        function dessinerRoue() {
+            const rayon = canvas.width / 2;
+            const angleTranche = (Math.PI * 2) / 37;
 
-            if (bet > balance) return alert("Fonds insuffisants !");
-            if (isNaN(chosen) || chosen < 0 || chosen > 36) return alert("Numéro invalide (0-36)");
+            for (let i = 0; i < 37; i++) {
+                ctx.beginPath();
+                ctx.fillStyle = colors[i];
+                ctx.moveTo(rayon, rayon);
+                ctx.arc(rayon, rayon, rayon, i * angleTranche, (i + 1) * angleTranche);
+                ctx.fill();
 
-            // Verrouiller
+                // Texte des numéros
+                ctx.save();
+                ctx.translate(rayon, rayon);
+                ctx.rotate(i * angleTranche + angleTranche / 2);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 14px Arial";
+                ctx.fillText(numbers[i], rayon - 30, 5);
+                ctx.restore();
+            }
+        }
+
+        function lancerRoulette() {
+            const bet = parseInt(document.getElementById('bet').value);
+            const target = parseInt(document.getElementById('numTarget').value);
+            if (bet > balance) return alert("Pas assez d'argent !");
+
             balance -= bet;
             document.getElementById('balance').innerText = balance;
-            btn.disabled = true;
-            status.innerText = "La roue tourne...";
-            wheel.innerText = "";
+            document.getElementById('spinBtn').disabled = true;
+            document.getElementById('resultat').innerText = "La bille roule...";
 
-            // Animation
-            const extraDegrees = Math.floor(Math.random() * 360) + 1440; // 4 tours min
-            currentRotation += extraDegrees;
-            wheel.style.transform = `rotate(${currentRotation}deg)`;
+            const tours = 5 + Math.random() * 5; // Entre 5 et 10 tours
+            const duree = 5000; // 5 secondes
+            const start = performance.now();
+            const angleDepart = angleActuel;
+            const rotationTotale = tours * Math.PI * 2;
 
-            setTimeout(() => {
-                const winningNum = Math.floor(Math.random() * 37);
-                wheel.innerText = winningNum;
-                wheel.style.transform = `rotate(${currentRotation}deg)`; // Fixer la position
-                
-                let win = (winningNum === chosen);
-                
-                if (win) {
-                    const gain = bet * 36;
-                    balance += gain;
-                    status.innerHTML = `<span class="win">JACKPOT !<br>Le ${winningNum} est sorti. +${gain}$</span>`;
+            function animer(time) {
+                let progression = (time - start) / duree;
+                if (progression > 1) progression = 1;
+
+                // Ralentissement progressif (Ease Out)
+                let ease = 1 - Math.pow(1 - progression, 3);
+                angleActuel = angleDepart + (rotationTotale * ease);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width/2, canvas.height/2);
+                ctx.rotate(angleActuel);
+                ctx.translate(-canvas.width/2, -canvas.height/2);
+                dessinerRoue();
+                ctx.restore();
+
+                if (progression < 1) {
+                    requestAnimationFrame(animer);
                 } else {
-                    const color = (winningNum === 0) ? "VERT" : (winningNum % 2 === 0) ? "NOIR" : "ROUGE";
-                    status.innerHTML = `<span class="lose">PERDU...<br>C'était le ${winningNum} (${color})</span>`;
+                    finaliserTour(target, bet);
                 }
-
-                document.getElementById('balance').innerText = balance;
-                btn.disabled = false;
-            }, 4000);
+            }
+            requestAnimationFrame(animer);
         }
+
+        function finaliserTour(target, bet) {
+            // Calcul du numéro gagnant sous la flèche (en haut, soit -90 degrés)
+            const angleFinal = (angleActuel % (Math.PI * 2));
+            const angleTranche = (Math.PI * 2) / 37;
+            
+            // On ajuste pour que la flèche pointe le haut (3*PI/2)
+            let indexGagnant = Math.floor(( (Math.PI * 1.5) - angleFinal ) / angleTranche) % 37;
+            if (indexGagnant < 0) indexGagnant += 37;
+
+            const numGagnant = numbers[indexGagnant];
+            const gagne = (numGagnant === target);
+
+            if (gagne) {
+                balance += bet * 36;
+                document.getElementById('resultat').innerHTML = `<span style="color:#4ade80">JACKPOT ! Le ${numGagnant}</span>`;
+            } else {
+                document.getElementById('resultat').innerHTML = `Le ${numGagnant} est sorti.`;
+            }
+
+            document.getElementById('balance').innerText = balance;
+            document.getElementById('spinBtn').disabled = false;
+        }
+
+        dessinerRoue();
     </script>
 </body>
 </html>
