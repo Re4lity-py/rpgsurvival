@@ -263,23 +263,20 @@
 
         let _secureBalance = loadBalance();
         
-        // --- LOGIQUE ADMIN ---
-        window.openAdmin = function() {
-            let pass = prompt("🔐 ADMIN PANEL\nEntrez le mot de passe :");
-            if (pass === "123456789") {
-                let amount = prompt("💰 BANQUE CASINO\nCombien d'argent voulez-vous ajouter ?");
-                amount = parseFloat(amount);
-                if (!isNaN(amount) && amount > 0) {
-                    _secureBalance += amount;
-                    updateUI();
-                    alert(`SUCCÈS !\n+${amount}$ ajoutés au compte.\nBon jeu patron !`);
-                } else {
-                    alert("Montant invalide.");
-                }
+        // --- ADMIN PANEL VIA CONSOLE ---
+        window.adminPanel = function() {
+            let amount = prompt("💰 ADMIN PANEL\nCombien d'argent voulez-vous ajouter ?");
+            amount = parseFloat(amount);
+            if (!isNaN(amount) && amount > 0) {
+                _secureBalance += amount;
+                updateUI();
+                alert(`SUCCÈS !\n+${amount}$ ajoutés au compte.\nBon jeu patron !`);
             } else {
-                alert("❌ ERREUR : Mot de passe incorrect.");
+                alert("Montant invalide.");
             }
         };
+
+        console.log("%c🔐 ADMIN PANEL: tapez adminPanel() dans la console pour ajouter de l'argent", "color: #D4AF37; font-size: 16px; font-weight: bold;");
 
         // Protection basique : Empêche la modification via console (window.balance = x)
         Object.defineProperty(window, 'balance', {
