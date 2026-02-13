@@ -10,7 +10,8 @@
         
         .navbar { background: #1e293b; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 100; }
         .balance { font-size: 1.5rem; color: var(--gold); font-weight: bold; }
-        .nav-btn { background: var(--gold); border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .nav-btn { background: var(--gold); border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-right: 5px; }
+        .admin-btn { background: #dc2626; color: white; border: 1px solid #991b1b; }
 
         .screen { display: none; padding: 20px; animation: fadeIn 0.3s; }
         #lobby { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 40px; max-width: 1000px; margin: 0 auto; }
@@ -126,8 +127,6 @@
             box-shadow: 0 0 50px var(--gold);
             animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .daily-box h1 { margin: 0; color: var(--gold); font-size: 2.5rem; text-shadow: 2px 2px 0 #000; }
-        .daily-box p { font-size: 1.2rem; margin: 20px 0; }
         .daily-amt { font-size: 3rem; font-weight: bold; color: #4ade80; display: block; margin: 10px 0; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -139,7 +138,7 @@
 
     <div id="cheat-overlay">
         <img id="sus-img" src="sus.jpg" style="max-width: 80%; max-height: 70vh;" onerror="this.style.display='none'; document.getElementById('cheat-msg').style.display='block';">
-        <div id="cheat-msg">Bha alors louloute ?<br>Tu essaie de tricher :O ?</div>
+        <div id="cheat-msg">TRICHE DÉTECTÉE !<br>Balance réinitialisée.</div>
     </div>
 
     <div id="daily-overlay">
@@ -152,7 +151,10 @@
     </div>
 
     <div class="navbar">
-        <button class="nav-btn" onclick="showScreen('lobby')">🏠 LOBBY</button>
+        <div>
+            <button class="nav-btn" onclick="showScreen('lobby')">🏠 LOBBY</button>
+            <button class="nav-btn admin-btn" onclick="openAdmin()">🔐 ADMIN</button>
+        </div>
         <div class="balance">💰 <span id="balance">...</span> $</div>
     </div>
 
@@ -261,6 +263,25 @@
 
         let _secureBalance = loadBalance();
         
+        // --- LOGIQUE ADMIN ---
+        window.openAdmin = function() {
+            let pass = prompt("🔐 ADMIN PANEL\nEntrez le mot de passe :");
+            if (pass === "123456789") {
+                let amount = prompt("💰 BANQUE CASINO\nCombien d'argent voulez-vous ajouter ?");
+                amount = parseFloat(amount);
+                if (!isNaN(amount) && amount > 0) {
+                    _secureBalance += amount;
+                    updateUI();
+                    alert(`SUCCÈS !\n+${amount}$ ajoutés au compte.\nBon jeu patron !`);
+                } else {
+                    alert("Montant invalide.");
+                }
+            } else {
+                alert("❌ ERREUR : Mot de passe incorrect.");
+            }
+        };
+
+        // Protection basique : Empêche la modification via console (window.balance = x)
         Object.defineProperty(window, 'balance', {
             get: function() { return _secureBalance; },
             set: function(val) {
@@ -538,7 +559,7 @@
                     });
                     toggle = !toggle;
                 }
-            }, 200); // Vitesse par défaut
+            }, 200); 
         }
 
         window.spinSlots = function() {
@@ -554,12 +575,10 @@
 
             btn.disabled = true; res.innerText = "Bonne chance...";
             
-            // Activer les animations
             reels.forEach(r => r.classList.add('spinning'));
             machine.classList.add('active-spin');
             machine.classList.remove('active-win');
             
-            // Accélérer les lumières temporairement
             clearInterval(slotInterval);
             let bulbs = document.querySelectorAll('.bulb');
             let fastInt = setInterval(() => {
@@ -568,7 +587,7 @@
 
             setTimeout(() => {
                 clearInterval(fastInt);
-                startSlotLights(); // Retour vitesse normale
+                startSlotLights(); 
                 
                 reels.forEach(r => r.classList.remove('spinning'));
                 machine.classList.remove('active-spin');
@@ -589,7 +608,7 @@
                 } else { res.innerHTML = `<span style="color:#f87171">Pas de chance.</span>`; }
                 
                 updateUI(); btn.disabled = false;
-            }, 1500); // Durée du spin augmentée pour profiter de l'animation
+            }, 1500); 
         };
 
         updateUI();
