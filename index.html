@@ -46,12 +46,65 @@
         .mine-tile.gem { color: #4ade80; background: #064e3b; border: 1px solid #4ade80; }
         .mine-tile.bomb { color: #f87171; background: #450a0a; border: 1px solid #f87171; }
 
-        /* SLOTS STYLES */
-        .slot-machine { background: linear-gradient(to bottom, #333, #111); padding: 30px; border-radius: 20px; border: 4px solid var(--gold); display: inline-block; box-shadow: 0 0 30px rgba(212, 175, 55, 0.2); }
-        .reels-container { display: flex; gap: 15px; background: #000; padding: 15px; border-radius: 10px; border: 2px solid #555; box-shadow: inset 0 0 20px black; }
+        /* SLOTS STYLES - NOUVEAU LOOK */
+        .slot-machine { 
+            background: linear-gradient(to bottom, #222, #000); 
+            padding: 20px; 
+            border-radius: 30px; 
+            border: 5px solid #444; 
+            display: inline-flex; 
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8); 
+            position: relative;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+
+        /* Bandes de lumières */
+        .light-strip {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .bulb {
+            width: 15px; height: 15px;
+            border-radius: 50%;
+            background: #333;
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.8);
+            transition: background 0.1s;
+        }
+        
+        /* États des lumières */
+        .bulb.lit-yellow { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+        .bulb.lit-green { background: #4ade80; box-shadow: 0 0 15px #4ade80; }
+
+        /* Animations de la machine */
+        .slot-machine.active-spin {
+            border-color: #fbbf24;
+            box-shadow: 0 0 50px rgba(251, 191, 36, 0.4);
+            animation: shakeMachine 0.5s infinite;
+        }
+        .slot-machine.active-win {
+            border-color: #4ade80;
+            box-shadow: 0 0 60px rgba(74, 222, 128, 0.6);
+            animation: pulseWin 0.8s infinite;
+        }
+
+        /* Animation des rouleaux */
+        .reels-container { display: flex; gap: 10px; background: #000; padding: 15px; border-radius: 10px; border: 3px solid #666; box-shadow: inset 0 0 20px black; }
         .reel { width: 80px; height: 100px; background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); position: relative; }
-        .reel.spinning { filter: blur(2px); }
+        .reel.spinning { 
+            color: transparent; 
+            background-image: linear-gradient(white 50%, #ddd 50%);
+            background-size: 100% 20px;
+            animation: scrollBg 0.1s linear infinite;
+        }
+        
         .payout-table { margin-top: 20px; font-size: 0.9rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; display: inline-block; max-width: 600px; }
+
+        @keyframes scrollBg { 0% { background-position: 0 0; } 100% { background-position: 0 20px; } }
+        @keyframes shakeMachine { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, 1px); } }
+        @keyframes pulseWin { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
 
         /* OVERLAYS & MODALS */
         #cheat-overlay, #daily-overlay {
@@ -161,11 +214,21 @@
 
     <div id="slots" class="screen">
         <div id="resSlots" class="status">Alignez 3 symboles !</div>
-        <div class="slot-machine">
+        <div id="slotMachine" class="slot-machine">
+            <div class="light-strip">
+                <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
+                <div class="bulb"></div><div class="bulb"></div>
+            </div>
+            
             <div class="reels-container">
                 <div class="reel" id="reel1">🍒</div>
                 <div class="reel" id="reel2">🍒</div>
                 <div class="reel" id="reel3">🍒</div>
+            </div>
+
+            <div class="light-strip">
+                <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
+                <div class="bulb"></div><div class="bulb"></div>
             </div>
         </div>
         <div style="margin-top:25px;">
@@ -198,7 +261,6 @@
 
         let _secureBalance = loadBalance();
         
-        // Système Anti-Triche simple
         Object.defineProperty(window, 'balance', {
             get: function() { return _secureBalance; },
             set: function(val) {
@@ -218,7 +280,6 @@
             }
         }
 
-        // --- NOUVEAU SYSTÈME DE BONUS JOURNALIER ---
         window.closeDaily = function() {
             document.getElementById('daily-overlay').style.display = 'none';
         }
@@ -226,7 +287,6 @@
         function checkDailyBonus() {
             const now = Date.now();
             const lastBonus = localStorage.getItem(BONUS_KEY);
-            // 24 heures en millisecondes = 86400000
             const cooldown = 86400000; 
 
             if (!lastBonus || (now - parseInt(lastBonus) >= cooldown)) {
@@ -234,11 +294,7 @@
                 saveBalance(_secureBalance);
                 updateUI();
                 localStorage.setItem(BONUS_KEY, now.toString());
-                
-                // Afficher le popup
                 document.getElementById('daily-overlay').style.display = 'flex';
-            } else {
-                console.log("Bonus journalier déjà récupéré. Prochain dans " + ((cooldown - (now - lastBonus))/3600000).toFixed(1) + "h");
             }
         }
 
@@ -258,6 +314,7 @@
             const target = document.getElementById(id);
             if(target) target.style.display = id === 'lobby' ? 'grid' : 'block';
             if(id === 'roulette') drawWheel();
+            if(id === 'slots') startSlotLights();
         };
 
         // --- ROULETTE LOGIC ---
@@ -455,37 +512,88 @@
             document.getElementById('cashoutBtn').disabled = true;
         };
 
-        // --- SLOTS LOGIC ---
+        // --- SLOTS LOGIC (AVEC ANIMATIONS) ---
+        let slotInterval = null;
+        function startSlotLights() {
+            if(slotInterval) clearInterval(slotInterval);
+            let bulbs = document.querySelectorAll('.bulb');
+            let toggle = false;
+            slotInterval = setInterval(() => {
+                if(document.getElementById('slotMachine').classList.contains('active-spin')) {
+                    // Mode rapide (Spin)
+                    bulbs.forEach(b => {
+                        b.className = 'bulb ' + (Math.random()>0.5 ? 'lit-yellow' : '');
+                    });
+                } else if(document.getElementById('slotMachine').classList.contains('active-win')) {
+                    // Mode gagnant (Vert)
+                    bulbs.forEach(b => {
+                        b.className = 'bulb ' + (toggle ? 'lit-green' : '');
+                    });
+                    toggle = !toggle;
+                } else {
+                    // Mode attente (lent)
+                    bulbs.forEach((b, i) => {
+                        if(i%2===0) b.className = 'bulb ' + (toggle ? 'lit-yellow' : '');
+                        else b.className = 'bulb ' + (!toggle ? 'lit-yellow' : '');
+                    });
+                    toggle = !toggle;
+                }
+            }, 200); // Vitesse par défaut
+        }
+
         window.spinSlots = function() {
             let bet = parseInt(document.getElementById('betSlots').value);
             if(isNaN(bet) || bet <= 0) return alert("Mise invalide");
             if(bet > _secureBalance) return alert("Fonds insuffisants");
             _secureBalance -= bet; updateUI();
+            
             const reels = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
             const btn = document.getElementById('btnSpinSlots');
             const res = document.getElementById('resSlots');
+            const machine = document.getElementById('slotMachine');
+
             btn.disabled = true; res.innerText = "Bonne chance...";
+            
+            // Activer les animations
             reels.forEach(r => r.classList.add('spinning'));
+            machine.classList.add('active-spin');
+            machine.classList.remove('active-win');
+            
+            // Accélérer les lumières temporairement
+            clearInterval(slotInterval);
+            let bulbs = document.querySelectorAll('.bulb');
+            let fastInt = setInterval(() => {
+                bulbs.forEach(b => b.className = 'bulb ' + (Math.random()>0.5 ? 'lit-yellow' : ''));
+            }, 50);
+
             setTimeout(() => {
+                clearInterval(fastInt);
+                startSlotLights(); // Retour vitesse normale
+                
                 reels.forEach(r => r.classList.remove('spinning'));
+                machine.classList.remove('active-spin');
+
                 const final = [
                     slotSymbols[Math.floor(secureRandom() * slotSymbols.length)],
                     slotSymbols[Math.floor(secureRandom() * slotSymbols.length)],
                     slotSymbols[Math.floor(secureRandom() * slotSymbols.length)]
                 ];
                 reels[0].innerText = final[0]; reels[1].innerText = final[1]; reels[2].innerText = final[2];
+                
                 if(final[0] === final[1] && final[1] === final[2]) {
                     let win = bet * slotPayouts[final[0]]; _secureBalance += win;
                     res.innerHTML = `<span style="color:#4ade80; font-size:1.6rem;">JACKPOT ${final[0]} ! +${win}$</span>`;
+                    machine.classList.add('active-win');
                 } else if (final[0] === final[1] || final[0] === final[2] || final[1] === final[2]) {
                     _secureBalance += bet; res.innerHTML = `<span style="color:#fbbf24; font-size:1.2rem;">2 PAREILS ! Mise remboursée (+${bet}$)</span>`;
                 } else { res.innerHTML = `<span style="color:#f87171">Pas de chance.</span>`; }
+                
                 updateUI(); btn.disabled = false;
-            }, 1000);
+            }, 1500); // Durée du spin augmentée pour profiter de l'animation
         };
 
         updateUI();
-        checkDailyBonus(); // VÉRIFICATION DU BONUS AU LANCEMENT
+        checkDailyBonus(); 
         showScreen('lobby');
     })();
     </script>
