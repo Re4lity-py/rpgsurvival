@@ -153,7 +153,6 @@
     <div class="navbar">
         <div>
             <button class="nav-btn" onclick="showScreen('lobby')">🏠 LOBBY</button>
-            <button class="nav-btn admin-btn" onclick="openAdmin()">🔐 ADMIN</button>
         </div>
         <div class="balance">💰 <span id="balance">...</span> $</div>
     </div>
@@ -263,20 +262,36 @@
 
         let _secureBalance = loadBalance();
         
-        // --- ADMIN PANEL VIA CONSOLE ---
-        window.adminPanel = function() {
-            let amount = prompt("💰 ADMIN PANEL\nCombien d'argent voulez-vous ajouter ?");
-            amount = parseFloat(amount);
-            if (!isNaN(amount) && amount > 0) {
-                _secureBalance += amount;
-                updateUI();
-                alert(`SUCCÈS !\n+${amount}$ ajoutés au compte.\nBon jeu patron !`);
-            } else {
-                alert("Montant invalide.");
+        // --- SYSTÈME ADMIN PAR CONSOLE UNIQUEMENT ---
+        // Instructions : Ouvrez la console (F12) et tapez 'admin' puis Entrée.
+        Object.defineProperty(window, 'admin', {
+            get: function() {
+                // Demande du mot de passe via un prompt
+                let pass = prompt("🔐 ACCÈS SYSTÈME RÉSERVÉ\nEntrez le code administrateur :");
+                
+                if (pass === "123456789") {
+                    let amount = prompt("💰 INJECTION DE FONDS\nMontant à créditer sur le solde :");
+                    amount = parseFloat(amount);
+                    
+                    if (!isNaN(amount) && amount > 0) {
+                        // Accès à la variable interne du solde
+                        _secureBalance += amount;
+                        updateUI(); // Met à jour l'affichage visuel
+                        return `✅ RÉUSSI : ${amount}$ ont été ajoutés à votre compte.`;
+                    } else {
+                        return "⚠️ ERREUR : Montant invalide.";
+                    }
+                } else {
+                    return "❌ ACCÈS REFUSÉ : Mot de passe incorrect.";
+                }
             }
-        };
+        });
+        
+        // Message d'accueil discret dans la console au chargement du jeu
+        console.log("%c💎 Gamble Elite Pro", "color:gold; font-size:20px; font-weight:bold;");
+        console.log("Tapez 'admin' pour accéder au panneau de contrôle.");
 
-        console.log("%c🔐 ADMIN PANEL: tapez adminPanel() dans la console pour ajouter de l'argent", "color: #D4AF37; font-size: 16px; font-weight: bold;");
+        
 
         // Protection basique : Empêche la modification via console (window.balance = x)
         Object.defineProperty(window, 'balance', {
