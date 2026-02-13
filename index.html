@@ -24,6 +24,7 @@
         input { background: #000; color: white; border: 1px solid var(--gold); padding: 8px; border-radius: 5px; width: 70px; text-align: center; font-size: 1rem; }
         .status { font-size: 1.4rem; height: 40px; color: var(--gold); margin: 15px; font-weight: bold; }
 
+        /* ROULETTE STYLES */
         .wheel-box { position: relative; display: inline-block; margin-bottom: 10px; }
         .arrow { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid var(--gold); position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 10; }
         canvas { border-radius: 50%; border: 6px solid #333; max-width: 320px; }
@@ -31,35 +32,53 @@
         .zone { background: rgba(0,0,0,0.5); padding: 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; font-weight: bold; border: 1px solid transparent; }
         .zone.active { border-color: white; background: var(--gold); color: black; }
 
+        /* BLACKJACK STYLES */
         .table { background: var(--green); border-radius: 100px 100px 20px 20px; padding: 30px 20px; border: 8px solid #3e2723; max-width: 550px; margin: 0 auto; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
         .hand { display: flex; justify-content: center; gap: 10px; min-height: 100px; margin: 10px 0; }
         .card { background: white; color: black; width: 55px; height: 85px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.4rem; border: 1px solid #999; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); }
         .card.back { background: linear-gradient(45deg, #d00, #900); color: transparent; border: 2px solid white; }
         .score-box { font-size: 1rem; background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 20px; display: inline-block; border: 1px solid var(--gold); }
 
+        /* MINES STYLES */
         .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 350px; margin: 20px auto; }
         .mine-tile { width: 60px; height: 60px; background: #1e293b; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; border-bottom: 4px solid #0f172a; }
         .mine-tile.revealed { background: #0f172a; border-bottom: none; }
         .mine-tile.gem { color: #4ade80; background: #064e3b; border: 1px solid #4ade80; }
         .mine-tile.bomb { color: #f87171; background: #450a0a; border: 1px solid #f87171; }
 
+        /* SLOTS STYLES */
         .slot-machine { background: linear-gradient(to bottom, #333, #111); padding: 30px; border-radius: 20px; border: 4px solid var(--gold); display: inline-block; box-shadow: 0 0 30px rgba(212, 175, 55, 0.2); }
         .reels-container { display: flex; gap: 15px; background: #000; padding: 15px; border-radius: 10px; border: 2px solid #555; box-shadow: inset 0 0 20px black; }
         .reel { width: 80px; height: 100px; background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); position: relative; }
         .reel.spinning { filter: blur(2px); }
         .payout-table { margin-top: 20px; font-size: 0.9rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; display: inline-block; max-width: 600px; }
 
-        #cheat-overlay {
+        /* OVERLAYS & MODALS */
+        #cheat-overlay, #daily-overlay {
             display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; z-index: 9999;
+            background: rgba(0,0,0,0.9); z-index: 9999;
             flex-direction: column; justify-content: center; align-items: center;
         }
         #cheat-msg {
             display: none; color: red; font-size: 3rem; font-weight: bold; 
             text-transform: uppercase; margin-top: 20px; animation: shake 0.5s infinite;
         }
+
+        .daily-box {
+            background: linear-gradient(135deg, #064E3B, #000);
+            border: 4px solid var(--gold);
+            padding: 40px; border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 50px var(--gold);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .daily-box h1 { margin: 0; color: var(--gold); font-size: 2.5rem; text-shadow: 2px 2px 0 #000; }
+        .daily-box p { font-size: 1.2rem; margin: 20px 0; }
+        .daily-amt { font-size: 3rem; font-weight: bold; color: #4ade80; display: block; margin: 10px 0; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
     </style>
 </head>
@@ -68,6 +87,15 @@
     <div id="cheat-overlay">
         <img id="sus-img" src="sus.jpg" style="max-width: 80%; max-height: 70vh;" onerror="this.style.display='none'; document.getElementById('cheat-msg').style.display='block';">
         <div id="cheat-msg">Bha alors louloute ?<br>Tu essaie de tricher :O ?</div>
+    </div>
+
+    <div id="daily-overlay">
+        <div class="daily-box">
+            <h1>📅 BONUS JOURNALIER</h1>
+            <p>Heureux de te revoir ! Voici ta récompense :</p>
+            <span class="daily-amt">+1000 $</span>
+            <button class="btn" style="font-size:1.2rem; padding: 15px 30px;" onclick="closeDaily()">RÉCUPÉRER 💰</button>
+        </div>
     </div>
 
     <div class="navbar">
@@ -153,6 +181,8 @@
     <script>
     (function() {
         const SAVE_KEY = 'ge_data_x9';
+        const BONUS_KEY = 'ge_last_bonus';
+        const BONUS_AMOUNT = 1000;
         
         function loadBalance() {
             try {
@@ -168,6 +198,7 @@
 
         let _secureBalance = loadBalance();
         
+        // Système Anti-Triche simple
         Object.defineProperty(window, 'balance', {
             get: function() { return _secureBalance; },
             set: function(val) {
@@ -184,6 +215,30 @@
             if(overlay) {
                 overlay.style.display = 'flex';
                 setTimeout(() => { overlay.style.display = 'none'; }, 10000);
+            }
+        }
+
+        // --- NOUVEAU SYSTÈME DE BONUS JOURNALIER ---
+        window.closeDaily = function() {
+            document.getElementById('daily-overlay').style.display = 'none';
+        }
+
+        function checkDailyBonus() {
+            const now = Date.now();
+            const lastBonus = localStorage.getItem(BONUS_KEY);
+            // 24 heures en millisecondes = 86400000
+            const cooldown = 86400000; 
+
+            if (!lastBonus || (now - parseInt(lastBonus) >= cooldown)) {
+                _secureBalance += BONUS_AMOUNT;
+                saveBalance(_secureBalance);
+                updateUI();
+                localStorage.setItem(BONUS_KEY, now.toString());
+                
+                // Afficher le popup
+                document.getElementById('daily-overlay').style.display = 'flex';
+            } else {
+                console.log("Bonus journalier déjà récupéré. Prochain dans " + ((cooldown - (now - lastBonus))/3600000).toFixed(1) + "h");
             }
         }
 
@@ -205,6 +260,7 @@
             if(id === 'roulette') drawWheel();
         };
 
+        // --- ROULETTE LOGIC ---
         let selectedBet = null, wheelAngle = 0;
         window.setBet = function(type, el) {
             document.querySelectorAll('.zone').forEach(z => z.classList.remove('active'));
@@ -270,6 +326,7 @@
             document.getElementById('spinBtn').disabled = false; updateUI();
         }
 
+        // --- BLACKJACK LOGIC ---
         let pH = [], dH = [], bjBet = 0, over = true;
         let deck = [];
 
@@ -344,6 +401,7 @@
             _secureBalance -= bjBet; bjBet *= 2; updateUI(); pH.push(drawCard()); window.stand();
         };
 
+        // --- MINES LOGIC ---
         let minesPos = [], minesActive = false, minesBet = 0, minesRevealed = 0, currentMult = 1;
         window.startMines = function() {
             if(minesActive) return;
@@ -397,6 +455,7 @@
             document.getElementById('cashoutBtn').disabled = true;
         };
 
+        // --- SLOTS LOGIC ---
         window.spinSlots = function() {
             let bet = parseInt(document.getElementById('betSlots').value);
             if(isNaN(bet) || bet <= 0) return alert("Mise invalide");
@@ -426,6 +485,7 @@
         };
 
         updateUI();
+        checkDailyBonus(); // VÉRIFICATION DU BONUS AU LANCEMENT
         showScreen('lobby');
     })();
     </script>
