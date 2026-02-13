@@ -72,7 +72,7 @@
 
     <div class="navbar">
         <button class="nav-btn" onclick="showScreen('lobby')">🏠 LOBBY</button>
-        <div class="balance">💰 <span id="balance">1000</span> $</div>
+        <div class="balance">💰 <span id="balance">...</span> $</div>
     </div>
 
     <div id="lobby" class="screen" style="display: grid;">
@@ -177,7 +177,7 @@
         });
 
         function triggerCheatMode() {
-            _secureBalance = 1000;
+            _secureBalance = 10;
             saveBalance(_secureBalance);
             updateUI();
             const overlay = document.getElementById('cheat-overlay');
