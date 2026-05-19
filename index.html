@@ -8,7 +8,7 @@
         :root { --gold: #D4AF37; --green: #064E3B; --red: #d00; --black: #111; --bg: #0f172a; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
         
-        .navbar { background: #1e293b; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 100; }
+        .navbar { background: #1e293b; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: [...]
         .balance { font-size: 1.5rem; color: var(--gold); font-weight: bold; }
         .nav-btn { background: var(--gold); border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-right: 5px; }
         .admin-btn { background: #dc2626; color: white; border: 1px solid #991b1b; }
@@ -27,22 +27,22 @@
 
         /* ROULETTE STYLES */
         .wheel-box { position: relative; display: inline-block; margin-bottom: 10px; }
-        .arrow { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid var(--gold); position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 10; }
+        .arrow { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid var(--gold); position: absolute; top: -10px; left: 50%; transfor[...]
         canvas { border-radius: 50%; border: 6px solid #333; max-width: 320px; }
-        .betting-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 500px; margin: 20px auto; background: var(--green); padding: 15px; border-radius: 10px; border: 2px solid var(--gold); }
+        .betting-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 500px; margin: 20px auto; background: var(--green); padding: 15px; border-radius: 10px; border: 2px [...]
         .zone { background: rgba(0,0,0,0.5); padding: 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; font-weight: bold; border: 1px solid transparent; }
         .zone.active { border-color: white; background: var(--gold); color: black; }
 
         /* BLACKJACK STYLES */
-        .table { background: var(--green); border-radius: 100px 100px 20px 20px; padding: 30px 20px; border: 8px solid #3e2723; max-width: 550px; margin: 0 auto; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
+        .table { background: var(--green); border-radius: 100px 100px 20px 20px; padding: 30px 20px; border: 8px solid #3e2723; max-width: 550px; margin: 0 auto; box-shadow: inset 0 0 50px rgba(0,0,0,[...]
         .hand { display: flex; justify-content: center; gap: 10px; min-height: 100px; margin: 10px 0; }
-        .card { background: white; color: black; width: 55px; height: 85px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.4rem; border: 1px solid #999; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); }
+        .card { background: white; color: black; width: 55px; height: 85px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.4rem; borde[...]
         .card.back { background: linear-gradient(45deg, #d00, #900); color: transparent; border: 2px solid white; }
         .score-box { font-size: 1rem; background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 20px; display: inline-block; border: 1px solid var(--gold); }
 
         /* MINES STYLES */
         .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 350px; margin: 20px auto; }
-        .mine-tile { width: 60px; height: 60px; background: #1e293b; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; border-bottom: 4px solid #0f172a; }
+        .mine-tile { width: 60px; height: 60px; background: #1e293b; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; border-bottom:[...]
         .mine-tile.revealed { background: #0f172a; border-bottom: none; }
         .mine-tile.gem { color: #4ade80; background: #064e3b; border: 1px solid #4ade80; }
         .mine-tile.bomb { color: #f87171; background: #450a0a; border: 1px solid #f87171; }
@@ -93,7 +93,7 @@
 
         /* Animation des rouleaux */
         .reels-container { display: flex; gap: 10px; background: #000; padding: 15px; border-radius: 10px; border: 3px solid #666; box-shadow: inset 0 0 20px black; }
-        .reel { width: 80px; height: 100px; background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); position: relative; }
+        .reel { width: 80px; height: 100px; background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; overflow: hidden; box-shadow: inset 0[...]
         .reel.spinning { 
             color: transparent; 
             background-image: linear-gradient(white 50%, #ddd 50%);
@@ -102,6 +102,10 @@
         }
         
         .payout-table { margin-top: 20px; font-size: 0.9rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; display: inline-block; max-width: 600px; }
+
+        .footer { text-align: center; padding: 20px; color: #888; font-size: 0.9rem; border-top: 1px solid #333; margin-top: 30px; }
+        .footer a { color: var(--gold); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
 
         @keyframes scrollBg { 0% { background-position: 0 0; } 100% { background-position: 0 20px; } }
         @keyframes shakeMachine { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, 1px); } }
@@ -131,7 +135,7 @@
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { trans[...]
     </style>
 </head>
 <body>
@@ -240,6 +244,10 @@
             <span style="color:var(--gold)">2 PAREILS : REMBOURSÉ</span><br>
             🍒 x3: <b>x5</b> | 🍋 x3: <b>x10</b> | 🍇 x3: <b>x20</b> | 💎 x3: <b>x50</b> | 7️⃣ x3: <b>x100</b>
         </div>
+    </div>
+
+    <div class="footer">
+        Created by <a href="https://github.com/Re4lity-py" target="_blank">Re4lity-Py</a> | Version 2.1.6.0
     </div>
 
     <script>
